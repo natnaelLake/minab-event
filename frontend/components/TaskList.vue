@@ -1,37 +1,20 @@
 <template>
-    <div>
-      <ul>
-        <li v-for="task in tasks" :key="task.id">
-          <router-link :to="`/tasks/${task.id}`">{{ task.title }}</router-link>
-          <button @click="deleteTask(task.id)">Delete</button>
-        </li>
-      </ul>
-    </div>
-  </template>
-  
-  <script setup>
-  import { ref } from 'vue';
-  import { useQuery, useMutation } from '@vue/apollo-composable';
-  import { GET_TASKS_QUERY, DELETE_TASK_MUTATION } from '~/graphql/queries';
-  
-  const tasks = ref([]);
-  const { result } = useQuery(GET_TASKS_QUERY);
-  
-  result.value?.tasks.forEach((task) => tasks.value.push(task));
-  
-  const deleteTaskMutation = useMutation(DELETE_TASK_MUTATION);
-  
-  const deleteTask = async (id) => {
-    try {
-      await deleteTaskMutation.mutate({ id });
-      tasks.value = tasks.value.filter(task => task.id !== id);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-  </script>
-  
-  <style scoped>
-  /* Add some styles */
-  </style>
-  
+  <div class="bg-white shadow-md rounded-lg p-4">
+    <h2 class="text-lg font-semibold mb-4">Tasks</h2>
+    <ul>
+      <li v-for="task in tasks" :key="task.id" class="flex items-center py-2">
+        <input type="checkbox" class="mr-3" />
+        <p class="text-gray-800">{{ task.description }}</p>
+      </li>
+    </ul>
+    <button class="bg-green-500 text-white py-2 px-4 rounded hover:bg-green-600 mt-4">Add New Task</button>
+  </div>
+</template>
+
+<script setup>
+const tasks = [
+  { id: 1, description: 'Review new event submissions' },
+  { id: 2, description: 'Respond to user feedback' },
+  // More tasks here...
+]
+</script>

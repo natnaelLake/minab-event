@@ -1,71 +1,6 @@
 <template>
-  <div class="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-100">
-    <form
-      @submit.prevent="onSubmit"
-      class="bg-white dark:bg-gray-800 w-[380px] p-8 rounded-xl shadow-lg transform transition-all duration-300"
-    >
-      <h2 class="text-center text-2xl font-semibold text-gray-700 dark:text-gray-200 mb-6">Create an Account</h2>
-
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">First Name</label>
-        <input
-          type="text"
-          placeholder="Enter your first name"
-          v-bind="first_name"
-          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300"
-          :class="{ 'border-red-500 focus:ring-red-500': errors.first_name }"
-        />
-        <span v-if="errors.first_name" class="text-red-500 text-sm mt-1">{{ errors.first_name }}</span>
-      </div>
-
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Last Name</label>
-        <input
-          type="text"
-          placeholder="Enter your last name"
-          v-bind="last_name"
-          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300"
-          :class="{ 'border-red-500 focus:ring-red-500': errors.last_name }"
-        />
-        <span v-if="errors.last_name" class="text-red-500 text-sm mt-1">{{ errors.last_name }}</span>
-      </div>
-
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Email</label>
-        <input
-          type="email"
-          placeholder="Enter your email"
-          v-bind="email"
-          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300"
-          :class="{ 'border-red-500 focus:ring-red-500': errors.email }"
-        />
-        <span v-if="errors.email" class="text-red-500 text-sm mt-1">{{ errors.email }}</span>
-      </div>
-
-      <div class="mb-4">
-        <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Password</label>
-        <input
-          type="password"
-          placeholder="Enter your password"
-          v-bind="password"
-          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300"
-          :class="{ 'border-red-500 focus:ring-red-500': errors.password }"
-        />
-        <span v-if="errors.password" class="text-red-500 text-sm mt-1">{{ errors.password }}</span>
-      </div>
-
-      <div class="mb-6">
-        <label class="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1">Confirm Password</label>
-        <input
-          type="password"
-          placeholder="Confirm your password"
-          v-bind="confirm_password"
-          class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300"
-          :class="{ 'border-red-500 focus:ring-red-500': errors.confirm_password }"
-        />
-        <span v-if="errors.confirm_password" class="text-red-500 text-sm mt-1">{{ errors.confirm_password }}</span>
-      </div>
-
+  <div class="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-100 mt-16 pb-10 pt-10">
+    <DynamicForm :schema="signupSchema" :submitHandler="onSubmit">
       <button
         type="submit"
         class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md focus:outline-none transition-all duration-300"
@@ -74,54 +9,119 @@
       >
         {{ loading ? "Signing Up..." : "Sign Up" }}
       </button>
-
       <div class="mt-4 text-center">
         <span class="text-sm text-gray-600 dark:text-gray-400">
           Already have an account?
-          <NuxtLink class="text-blue-500 hover:underline dark:text-blue-400" to="/auth/login">Log in</NuxtLink>
+          <NuxtLink
+            class="text-blue-500 hover:underline dark:text-blue-400"
+            to="/login"
+          >
+            Log in
+          </NuxtLink>
         </span>
       </div>
-    </form>
+    </DynamicForm>
   </div>
 </template>
 
 <script setup>
+import DynamicForm from "@/components/DynamicForm.vue";
 import signup from "~/graphql/mutations/SignupMutation.gql";
 import { useAuthStore } from "~/store";
 import Cookies from "js-cookie";
 import { toast } from "vue3-toastify";
 import * as yup from "yup";
 
+
 const authStore = useAuthStore();
 
 const { mutate, onDone, loading, onError } = authentication(signup);
 
-const { defineInputBinds, handleSubmit, errors, setFieldError } = useForm({
-  validationSchema: yup.object({
-    first_name: yup.string().required("First name is required"),
-    last_name: yup.string().required("Last name is required"),
-    email: yup
-      .string()
-      .email("Invalid email address")
-      .required("Email is required"),
-    password: yup
-      .string()
-      .min(6, "Password must be at least 6 characters")
-      .required("Password is required"),
-    confirm_password: yup
-      .string()
-      .oneOf([yup.ref("password"), null], "Passwords must match")
-      .required("Password confirmation is required"),
-  }),
-});
+const signupSchema = {
+  fields: [
+    {
+      as: "input",
+      name: "first_name",
+      label: "First Name",
+      placeholder: "Enter your First Name",
+      type: "text",
+      rules: yup.string().required("First name is required"),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
+    {
+      as: "input",
+      name: "last_name",
+      label: "Last Name",
+      placeholder: "Enter your Last Name",
+      type: "text",
+      rules: yup.string().required("Last name is required"),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
+    {
+      as: "input",
+      name: "email",
+      label: "Email",
+      placeholder: "Enter your email",
+      type: "email",
+      rules: yup
+        .string()
+        .email("Invalid email address")
+        .required("Email is required"),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
+    {
+      as: "input",
+      name: "password",
+      label: "Password",
+      placeholder: "Enter your password",
+      type: "password",
+      rules: yup
+        .string()
+        .min(6, "Password must be at least 6 characters")
+        .required("Password is required"),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
+    {
+      as: "input",
+      name: "confirm_password",
+      label: "Confirm Password",
+      placeholder: "Confirm your password",
+      type: "password",
+      rules: yup
+        .string()
+        .min(6, "Passwords must match")
+        .required("Confirm Password is required"),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
+  ],
+};
 
-const first_name = defineInputBinds("first_name");
-const last_name = defineInputBinds("last_name");
-const email = defineInputBinds("email");
-const password = defineInputBinds("password");
-const confirm_password = defineInputBinds("confirm_password");
-
-const onSubmit = handleSubmit((values, { setFieldError }) => {
+const onSubmit = async (values) => {
   const input = {
     first_name: values.first_name,
     last_name: values.last_name,
@@ -130,13 +130,9 @@ const onSubmit = handleSubmit((values, { setFieldError }) => {
     confirm_password: values.confirm_password,
   };
   mutate(input);
-});
-
+};
 onDone((result) => {
-  toast.success("User signed up successfully!", {
-    transition: toast.TRANSITIONS.FLIP,
-    position: toast.POSITION.TOP_RIGHT,
-  });
+  toast.success("User signed up successfully!");
   Cookies.set("auth_token", result.data.signup.token, { expires: 7 });
 
   authStore.setToken(result.data.signup.token);
@@ -147,22 +143,6 @@ onDone((result) => {
 });
 
 onError((error) => {
-  toast.error("Something went wrong", {
-    transition: toast.TRANSITIONS.FLIP,
-    position: toast.POSITION.TOP_RIGHT,
-  });
+  toast.error("Something went wrong");
 });
 </script>
-
-<style scoped>
-/* Focused border color for dark mode */
-input:focus {
-  outline: none;
-}
-
-/* Transition for hover and focus states */
-input,
-button {
-  transition: all 0.3s ease;
-}
-</style>

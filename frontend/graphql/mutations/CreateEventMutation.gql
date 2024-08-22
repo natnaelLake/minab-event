@@ -1,0 +1,31 @@
+mutation CreateEvent(
+  $title: String!,
+  $description: String!,
+  $location: String!,
+  $venue: String!,
+  $address: String!,
+  $price: numeric!,
+  $preparation_time: interval!,
+  $event_date: timestamptz!,
+  $tags: _text!,
+  $featured_image_url: String!,
+  $user_id: uuid!
+) {
+  insert_events_one(object: {
+    title: $title,
+    description: $description,
+    location: $location,
+    venue: $venue,
+    address: $address,
+    price: $price,
+    preparation_time: $preparation_time,
+    event_date: $event_date,
+    tags: $tags,
+    featured_image_url: $featured_image_url,
+    user_id: $user_id
+  }) {
+    id
+    title
+    event_date
+  }
+}

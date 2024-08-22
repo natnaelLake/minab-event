@@ -58,5 +58,6 @@ export default defineNuxtConfig({
     inject: true,
     quality: 80,
   },
+  plugins: [{ src: '~/plugins/vue3-toastify.ts' }],
   compatibilityDate: "2024-08-01",
 });

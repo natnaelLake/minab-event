@@ -7,22 +7,28 @@
       <img
         src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTSKbCFe_QYSVH-4FpaszXvakr2Eti9eAJpQ&s"
         alt="Profile Avatar"
-        @click="toggleDrawer"
-        class="h-10 w-10 rounded-full cursor-pointer border border-gray-300"
+        class="h-10 w-10 rounded-full border border-gray-300"
       />
-      <NuxtLink to="/" class="text-xl font-bold hover:text-pink-500">
-        MinabEvent
-      </NuxtLink>
+      <div v-if="!isAdmin">
+        <NuxtLink to="/" class="text-xl font-bold hover:text-pink-500">
+          MinabEvent
+        </NuxtLink>
+      </div>
+      <div v-else>
+        <p class="text-xl font-bold">MinabEvent</p>
+      </div>
     </div>
 
     <!-- Right: Auth Links or Profile Actions -->
     <div v-if="isAuthenticated" class="flex items-center space-x-6">
-      <NuxtLink
-        to="/event/create"
-        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition duration-300"
-      >
-        Create Event
-      </NuxtLink>
+      <div v-if="!isAdmin">
+        <NuxtLink
+          to="/event/create"
+          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition duration-300"
+        >
+          Create Event
+        </NuxtLink>
+      </div>
       <img
         src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTSKbCFe_QYSVH-4FpaszXvakr2Eti9eAJpQ&s"
         alt="Profile Avatar"
@@ -56,14 +62,15 @@
           class="w-64 h-full bg-white shadow-lg p-6 text-white transform transition-transform duration-300 ease-in-out"
           @click.stop
         >
-          <ul class="space-y-6">
+          <ul class="space-y-2">
             <li v-for="route in routes" :key="route.path">
               <template v-if="route.name !== 'Logout'">
                 <NuxtLink
                   :to="route.path"
                   class="block w-full text-left p-2 text-black rounded-lg hover:bg-blue-400 hover:text-white hover:shadow-lg"
-                  >{{ route.name }}</NuxtLink
                 >
+                  {{ route.name }}
+                </NuxtLink>
               </template>
               <template v-if="route.name === 'Logout'">
                 <button
@@ -118,6 +125,7 @@ const router = useRouter();
 const showModal = ref(false);
 const drawerOpen = ref(false);
 const isAuthenticated = computed(() => authStore.isAuthenticated);
+const isAdmin = computed(() => authStore.role === "admin"); // Check if the role is admin
 
 const openModal = () => {
   showModal.value = true;
@@ -131,7 +139,7 @@ const handleLogout = () => {
   authStore.logout();
   showModal.value = false;
   drawerOpen.value = false;
-  router.push("/login");
+  router.push("/");
 };
 
 const toggleDrawer = () => {

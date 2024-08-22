@@ -1,108 +1,135 @@
 export const routes = [
-  // {
-  //   name: 'MinabEvent',
-  //   path: '/',
-  //   component: () => import('@/pages/index.vue'),
-  //   meta: {
-  //     requiresAuth: false,
-  //   },
-  // },
   {
-    name: 'Login',
-    path: '/login',
-    component: () => import('@/pages/login.vue'),
+    path: "/",
+    component: () => import("@/pages/index.vue"),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ["user"],
+    },
+  },
+  {
+    name: "Login",
+    path: "/login",
+    component: () => import("@/pages/login.vue"),
     meta: {
       requiresAuth: false,
     },
   },
   {
-    name: 'Sign Up',
-    path: '/signup',
-    component: () => import('@/pages/signup.vue'),
+    name: "Sign Up",
+    path: "/signup",
+    component: () => import("@/pages/signup.vue"),
     meta: {
       requiresAuth: false,
     },
   },
   {
-    name: 'My Events',
-    path: '/user/my-events',
-    component: () => import('@/pages/user/my-events.vue'),
+    name: "My Events",
+    path: "/user/my-events",
+    component: () => import("@/pages/user/my-events.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['user'],
+      allowedRoles: ["user"],
     },
   },
   {
-    name: 'Ticket Reservation',
-    path: '/user/tickets',
-    component: () => import('@/pages/user/tickets.vue'),
+    name: "Ticket Reservation",
+    path: "/user/tickets",
+    component: () => import("@/pages/user/tickets.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['user'],
+      allowedRoles: ["user"],
     },
   },
   {
-    name: 'Bookmarks',
-    path: '/user/bookmarks',
-    component: () => import('@/pages/user/bookmarks.vue'),
+    name: "Bookmarks",
+    path: "/user/bookmarks",
+    component: () => import("@/pages/user/bookmarks.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['user'],
+      allowedRoles: ["user"],
     },
   },
   {
-    name: 'Settings',
-    path: '/user/settings',
-    component: () => import('@/pages/user/settings.vue'),
+    name: "Dashboard",
+    path: "/admin/dashboard",
+    component: () => import("@/pages/admin/dashboard.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['user', 'admin'],
-    },
-  },
-  
-  {
-    name: 'Dashboard',
-    path: '/admin/dashboard',
-    component: () => import('@/pages/admin/dashboard.vue'),
-    meta: {
-      requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ["admin"],
     },
   },
   {
-    name: 'Event Management',
-    path: '/admin/events',
-    component: () => import('@/pages/admin/events.vue'),
+    name: "Event Management",
+    path: "/admin/event-management",
+    component: () => import("@/pages/admin/event-management.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ["admin"],
     },
   },
   {
-    name: 'Manage Users',
-    path: '/admin/users',
-    component: () => import('@/pages/admin/users.vue'),
+    name: "Manage Users",
+    path: "/admin/user-management",
+    component: () => import("@/pages/admin/event-management.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['admin'],
+      allowedRoles: ["admin"],
     },
   },
   {
-    name: 'Logout',
-    path: '/logout',
-    component: () => import('@/pages/logout.vue'),
+    name: "Tasks Management",
+    path: "/admin/TagsCategoriesManagement",
+    component: () => import("@/pages/admin/TagsCategoriesManagement.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ['user', 'admin'],
+      allowedRoles: ["admin"],
+    },
+  },
+  {
+    name: "Supports",
+    path: "/admin/supports",
+    component: () => import("@/pages/admin/supports.vue"),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ["admin"],
+    },
+  },
+  {
+    name: "Reports",
+    path: "/admin/reports",
+    component: () => import("@/pages/admin/reports.vue"),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ["admin"],
+    },
+  },
+  {
+    name: "Settings",
+    path: "/user/settings",
+    component: () => import("@/pages/user/settings.vue"),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ["user", "admin"],
+    },
+  },
+  {
+    name: "Logout",
+    path: "/logout",
+    component: () => import("@/pages/logout.vue"),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ["user", "admin"],
     },
   },
 ];
 
 export function getNavigationRoutes(role, isAuthenticated) {
-  return routes.filter(route => {
-    console.log('*****************',role,isAuthenticated)
-    // Exclude Login and Sign Up routes if the user is authenticated
-    if (isAuthenticated && (route.name === 'Login' || route.name === 'Sign Up')) {
+  return routes.filter((route) => {
+    if (
+      isAuthenticated &&
+      (route.name === "Login" || route.name === "Sign Up")
+    ) {
       return false;
     }
     if (route.meta.requiresAuth && !isAuthenticated) {

@@ -13,26 +13,25 @@
             <p class="text-gray-600">{{ user.title }}</p>
           </div>
         </div>
-        <div>
+        <!-- <div>
           <button
             class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-            @click="redirectToEditProfile"
           >
             Edit Profile
           </button>
-        </div>
+        </div> -->
       </div>
 
       <div class="mt-6 flex justify-around">
         <button
           class="text-blue-500 font-semibold hover:underline"
-          @click="redirectFollowing"
+          @click="redirectToFollowing"
         >
           {{ user.following }} Following
         </button>
         <button
           class="text-blue-500 font-semibold hover:underline"
-          @click="redirectFollowers"
+          @click="redirectToFollowers"
         >
           {{ user.followers }} Followers
         </button>
@@ -71,10 +70,6 @@
 </template>
 
 <script setup>
-import { useAuthStore } from "~/store";
-
-const authStore = useAuthStore();
-const userId = authStore.user.id;
 const user = {
   avatar:
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTafDGOCQJda4LjZXx9U4ZGlFdjYyVmZNRrwA&s",
@@ -119,14 +114,11 @@ const user = {
     },
   ],
 };
-const redirectFollowing = () => {
+const redirectToFollowing = () => {
   navigateTo("/user/follows");
 };
-const redirectFollowers = () => {
+const redirectToFollowers = () => {
   navigateTo("/user/follows");
-};
-const redirectToEditProfile = () => {
-  navigateTo("/user/profile/edit-profile/" + userId);
 };
 </script>
 

@@ -21,7 +21,12 @@ export default defineNuxtConfig({
     "@vueuse/nuxt",
     "@nuxtjs/color-mode",
     "@nuxt/image",
+    '@nuxtjs/leaflet',
+    
   ],
+  leaflet: {
+    markerCluster: true
+  },
   // pinia: { storesDirs: ["./stores/**"] },
   colorMode: {
     classSuffix: "",

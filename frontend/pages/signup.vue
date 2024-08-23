@@ -1,5 +1,7 @@
 <template>
-  <div class="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-100 mt-16 pb-10 pt-10">
+  <div
+    class="flex items-center justify-center bg-gray-100 dark:bg-gray-100 mt-16 pb-10 pt-10"
+  >
     <DynamicForm :schema="signupSchema" :submitHandler="onSubmit">
       <button
         type="submit"
@@ -32,7 +34,6 @@ import Cookies from "js-cookie";
 import { toast } from "vue3-toastify";
 import * as yup from "yup";
 
-
 const authStore = useAuthStore();
 
 const { mutate, onDone, loading, onError } = authentication(signup);
@@ -48,8 +49,9 @@ const signupSchema = {
       rules: yup.string().required("First name is required"),
       class: {
         wrapper: "mb-5",
-        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
-        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-800 mb-1",
+        input:
+          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
         error: "text-red-500 text-sm mt-1",
       },
     },
@@ -62,8 +64,9 @@ const signupSchema = {
       rules: yup.string().required("Last name is required"),
       class: {
         wrapper: "mb-5",
-        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
-        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-800 mb-1",
+        input:
+          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
         error: "text-red-500 text-sm mt-1",
       },
     },
@@ -79,8 +82,9 @@ const signupSchema = {
         .required("Email is required"),
       class: {
         wrapper: "mb-5",
-        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
-        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-800 mb-1",
+        input:
+          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
         error: "text-red-500 text-sm mt-1",
       },
     },
@@ -96,8 +100,9 @@ const signupSchema = {
         .required("Password is required"),
       class: {
         wrapper: "mb-5",
-        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
-        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-800 mb-1",
+        input:
+          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
         error: "text-red-500 text-sm mt-1",
       },
     },
@@ -113,8 +118,9 @@ const signupSchema = {
         .required("Confirm Password is required"),
       class: {
         wrapper: "mb-5",
-        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
-        input: "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-300 transition duration-300",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-800 mb-1",
+        input:
+          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
         error: "text-red-500 text-sm mt-1",
       },
     },

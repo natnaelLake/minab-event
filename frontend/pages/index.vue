@@ -53,9 +53,31 @@
 import EventCard from "~/components/EventCard.vue";
 import { useRouter } from "vue-router";
 import Filter from "~/components/Filter.vue";
-import '@fortawesome/fontawesome-free/css/all.css';
+import "@fortawesome/fontawesome-free/css/all.css";
 
 const router = useRouter();
+
+function toggleBookmark(event) {
+  console.log('***********xxxxxxxxxx',event);
+  event.isBookmarked = !event.isBookmarked;
+  event.actions[0] = {
+    ...event.actions[0], // Spread the existing action object
+    icon: event.isBookmarked
+      ? "fa-solid fa-bookmark text-green-500"
+      : "fa-regular fa-bookmark text-gray-500"
+  };
+}
+
+function toggleFollow(event) {
+  event.isFollowed = !event.isFollowed;
+  event.actions[1] = {
+    ...event.actions[1],
+    icon: event.isFollowed
+      ? "fa-solid fa-star text-green-500"
+      : "fa-regular fa-star text-gray-500"
+  };
+}
+
 
 const goToEventDetail = (eventId) => {
   router.push(`/event/${eventId}`);
@@ -67,15 +89,17 @@ const events = [
     ownerAvatar:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
     ownerName: "John Doe",
+    isBookmarked: false, // Add this
+    isFollowed: false, // Add this
     headerActions: [
       {
-        icon: "🔖",
-        handler: () => alert("Bookmark clicked!"),
+        icon: "fa-solid fa-bookmark", // Use FontAwesome class
+        handler: (event) => toggleBookmark(event),
         class: "text-gray-600",
       },
       {
-        icon: "⭐",
-        handler: () => alert("Follow clicked!"),
+        icon: "fa-solid fa-star", // Use FontAwesome class
+        handler: (event) => toggleFollow(event),
         class: "text-yellow-500",
       },
     ],

@@ -6,7 +6,7 @@
           <div
             v-for="bookmark in bookmarks"
             :key="bookmark.id"
-            class="bg-white dark:bg-gray-100 p-5 rounded-lg shadow-lg transform transition-transform hover:-translate-y-2 hover:shadow-xl cursor-pointer"
+            class="bg-white dark:bg-gray-1'*00 p-5 rounded-lg shadow-lg transform transition-transform hover:-translate-y-2 hover:shadow-xl cursor-pointer"
             @click="goToCardDetail(bookmark.id)"
           >
             <img

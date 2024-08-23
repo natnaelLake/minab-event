@@ -25,7 +25,18 @@
           <!-- Map Component Integration (if any) -->
         </div>
       </div>
-  
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Location</label>
+        <div class="relative">
+          <input 
+            v-model="location" 
+            type="text" 
+            placeholder="Enter location" 
+            class="w-full p-3 border rounded"
+          />
+          <!-- Map Component Integration (if any) -->
+        </div>
+      </div>
       <!-- Date -->
       <div class="mb-4">
         <label class="block text-sm font-medium mb-2">Date</label>

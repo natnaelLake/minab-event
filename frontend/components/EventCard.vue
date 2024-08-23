@@ -16,16 +16,15 @@
         <h3 class="text-lg font-semibold dark:text-black">{{ header.name }}</h3>
       </div>
       <div v-if="header.actions" class="flex space-x-4">
-        <slot name="header-actions">
-          <button
-            v-for="(action, idx) in header.actions"
-            :key="idx"
-            :class="action.class"
-            @click="action.handler"
-          >
-            {{ action.icon }}
-          </button>
-        </slot>
+        <div class="actions">
+          <i :class="header.actions[0].icon" 
+             @click="header.actions[0].handler(header)">
+          </i>
+          <i :class="header.actions[1].icon" 
+             @click="header.actions[1].handler(header)">
+          </i>
+        </div>
+
       </div>
     </div>
 
@@ -93,6 +92,7 @@
 
 <script setup>
 import { defineProps, defineEmits } from "vue";
+import '@fortawesome/fontawesome-free/css/all.css';
 
 const props = defineProps({
   header: {

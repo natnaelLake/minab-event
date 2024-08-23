@@ -1,0 +1,5 @@
+mutation UploadImages($files: [UploadImageInput!]!) {
+  uploadImages(input: $files) {
+    imageUrls
+  }
+}

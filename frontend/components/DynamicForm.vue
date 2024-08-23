@@ -26,10 +26,26 @@
         {{ label }}
       </label>
       <Field
+        v-if="type === 'file'"
+        :id="name"
+        :name="name"
+        type="file"
+        :multiple="attrs.multiple || true"
+        :class="[
+          'w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-300 transition duration-300',
+          fieldClass?.input,
+        ]"
+        v-bind="attrs"
+      />
+
+      <!-- Handle other field types -->
+      <Field
+        v-else
         :as="as"
         :id="name"
         :name="name"
         :placeholder="placeholder"
+        :type="type"
         :class="[
           'w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-300 transition duration-300',
           fieldClass?.input,
@@ -59,7 +75,6 @@
 <script setup>
 import { Form, Field, ErrorMessage } from "vee-validate";
 import { defineProps } from "vue";
-import Multiselect from "vue-multiselect";
 
 const props = defineProps({
   schema: {

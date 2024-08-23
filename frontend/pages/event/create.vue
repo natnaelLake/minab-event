@@ -153,10 +153,10 @@
       <button
         type="submit"
         class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md focus:outline-none transition-all duration-300"
-        :disabled="loading"
-        :class="{ 'opacity-50 cursor-not-allowed': loading }"
+        :disabled="createEventLoading"
+        :class="{ 'opacity-50 cursor-not-allowed': createEventLoading }"
       >
-        {{ loading ? "Creating Event..." : "Create Event" }}
+        {{ createEventLoading ? "Creating Event..." : "Create Event" }}
       </button>
     </DynamicForm>
 
@@ -213,6 +213,7 @@ import { useForm } from "vee-validate";
 import * as yup from "yup";
 import DynamicForm from "@/components/DynamicForm.vue";
 import createEventMutation from "~/graphql/mutations/CreateEventMutation.gql";
+import UploadImageMutation from "~/graphql/mutations/UploadImageMutation.gql";
 import { useAuthStore } from "~/store";
 import { useMutation } from "@vue/apollo-composable";
 import { toast } from "vue3-toastify";
@@ -221,7 +222,9 @@ import LocationMap from "@/components/LocationMap.vue";
 
 const authStore = useAuthStore();
 const router = useRouter();
-const { mutate, loading, onDone, onError } = useMutation(createEventMutation);
+const { mutate: createEvent, loading: createEventLoading, onDone: onCreateEventDone, onError: onCreateEventError } = useMutation(createEventMutation);
+const { mutate: uploadImage, loading: uploadImageLoading, onDone: onUploadImageDone, onError: onUploadImageError } = useMutation(UploadImageMutation);
+
 
 const showModal = ref(false);
 const selectedLocation = ref(null);
@@ -238,6 +241,8 @@ const categorySearchQuery = ref("");
 const tagsError = ref("");
 const categoryError = ref("");
 const locationError = ref("");
+const image = ref(null);
+const profileImage = (ref < File) | (null > null);
 
 const tagOptions = [
   { value: "tech", label: "Tech" },
@@ -330,38 +335,73 @@ const validateForm = () => {
 };
 
 const onSubmit = async (values) => {
+  // Ensure all selected images are assigned and reset any previous errors
+  const files = values.featured_image_url;
+  if (!files || files.length === 0) {
+    toast.error("No files selected", { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
+    return;
+  }
+
   if (!validateForm()) return; // Prevent submission if there are errors
 
-  const input = {
-    title: values.title,
-    description: values.description,
-    location: selectedLocation.value
-      ? `${selectedLocation.value[0]},${selectedLocation.value[1]}`
-      : values.location,
-    venue: values.venue,
-    price: parseFloat(values.price) || 0,
-    preparation_time: values.preparation_time,
-    event_date: values.event_date,
-    tags: `{${selectedTagValues.value.join(",")}}`, // Convert to PostgreSQL array format
-    categories: `{${selectedCategoryValues.value.join(",")}}`, // Convert to PostgreSQL array format
-    featured_image_url: "values.featured_image_url[0]",
-    user_id: authStore.user.id,
-  };
-
   try {
-    await mutate(input);
-    toast.success("Event created successfully!", {
-      transition: toast.TRANSITIONS.FLIP,
-      position: toast.POSITION.TOP_RIGHT,
-    });
+    let uploadedImages = [];
+
+    for (const file of files) {
+      const reader = new FileReader();
+
+      const imageUploadPromise = new Promise((resolve, reject) => {
+        reader.onloadend = async () => {
+          if (reader.result) {
+            const base64File = reader.result.split(",")[1];
+            try {
+              const { data } = await uploadImage({ files: [{ file: base64File }] });
+              const imageUrl = data.uploadImage.imageUrl;
+              resolve(imageUrl);
+            } catch (uploadError) {
+              reject(new Error("Error uploading file: " + uploadError.message));
+            }
+          } else {
+            reject(new Error("Failed to read file"));
+          }
+        };
+
+        reader.readAsDataURL(file);
+      });
+
+      try {
+        const imageUrl = await imageUploadPromise;
+        uploadedImages.push(imageUrl);
+      } catch (error) {
+        toast.error(error.message, { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
+        return;
+      }
+    }
+
+    // Prepare input for event creation
+    const input = {
+      title: values.title,
+      description: values.description,
+      location: selectedLocation.value ? `${selectedLocation.value[0]},${selectedLocation.value[1]}` : values.location,
+      venue: values.venue,
+      price: parseFloat(values.price) || 0,
+      preparation_time: values.preparation_time,
+      event_date: values.event_date,
+      tags: `{${selectedTagValues.value.join(",")}}`, // Convert to PostgreSQL array format
+      categories: `{${selectedCategoryValues.value.join(",")}}`, // Convert to PostgreSQL array format
+      featured_image_url: `{${uploadedImages.join(",")}}`, // Store all uploaded image URLs as a PostgreSQL array
+      user_id: authStore.user.id,
+    };
+
+    // Use the updated mutation hook
+    await createEvent(input);
+    toast.success("Event created successfully!", { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
     router.push("/");
   } catch (error) {
-    toast.error("Error creating event: " + error.message, {
-      transition: toast.TRANSITIONS.FLIP,
-      position: toast.POSITION.TOP_RIGHT,
-    });
+    toast.error("Error creating event: " + error.message, { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
   }
 };
+
 
 // Listen for custom event from LocationMap
 const updateLocation = (event) => {
@@ -497,6 +537,7 @@ const eventSchema = {
       label: "Featured Image",
       placeholder: "Upload featured image",
       type: "file",
+      multiple: true,
       rules: yup.mixed().required("Featured image is required"),
       class: {
         wrapper: "mb-5",

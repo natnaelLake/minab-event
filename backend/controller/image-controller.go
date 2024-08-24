@@ -11,21 +11,21 @@ import (
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 )
 
-type UploadRequestInput struct {
-	File string `json:"file"`
+type UploadImagesInput struct {
+	Files []string `json:"files"`
 }
 
-type UploadRequest struct {
-	Action map[string]interface{} `json:"action"`
-	Input  struct {
-		UserInput UploadRequestInput `json:"input"`
+type UploadImagesRequest struct {
+	Action          map[string]interface{} `json:"action"`
+	Input           struct {
+		UserInput UploadImagesInput `json:"input"`
 	} `json:"input"`
 	RequestQuery     string                 `json:"request_query"`
 	SessionVariables map[string]interface{} `json:"session_variables"`
 }
 
-type UploadResponse struct {
-	ImageURL string `json:"imageUrl"`
+type UploadImagesResponse struct {
+	ImageURLs []string `json:"imageUrls"`
 }
 
 var cld *cloudinary.Cloudinary
@@ -38,38 +38,43 @@ func init() {
 	}
 }
 
-func UploadHandler(w http.ResponseWriter, r *http.Request) {
+func UploadImagesHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, `{"error": "Invalid request method"}`, http.StatusMethodNotAllowed)
 		return
 	}
 
-	var req UploadRequest
+	var req UploadImagesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, `{"error": "Failed to decode request"}`, http.StatusBadRequest)
 		return
 	}
 
-	fileData := req.Input.UserInput.File
-	if fileData == "" {
+	fileDataList := req.Input.UserInput.Files
+	if len(fileDataList) == 0 {
 		http.Error(w, `{"error": "No file data provided"}`, http.StatusBadRequest)
 		return
 	}
 
-	decodedFile, err := base64.StdEncoding.DecodeString(fileData)
-	if err != nil {
-		http.Error(w, `{"error": "Failed to decode file"}`, http.StatusBadRequest)
-		return
+	var imageUrls []string
+	for _, fileData := range fileDataList {
+		decodedFile, err := base64.StdEncoding.DecodeString(fileData)
+		if err != nil {
+			http.Error(w, `{"error": "Failed to decode file"}`, http.StatusBadRequest)
+			return
+		}
+
+		resp, err := cld.Upload.Upload(r.Context(), bytes.NewReader(decodedFile), uploader.UploadParams{Folder: "tasks"})
+		if err != nil {
+			http.Error(w, `{"error": "Failed to upload to Cloudinary"}`, http.StatusInternalServerError)
+			return
+		}
+
+		imageUrls = append(imageUrls, resp.SecureURL)
 	}
 
-	resp, err := cld.Upload.Upload(r.Context(), bytes.NewReader(decodedFile), uploader.UploadParams{Folder: "tasks"})
-	if err != nil {
-		http.Error(w, `{"error": "Failed to upload to Cloudinary"}`, http.StatusInternalServerError)
-		return
-	}
-
-	response := UploadResponse{
-		ImageURL: resp.SecureURL,
+	response := UploadImagesResponse{
+		ImageURLs: imageUrls,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

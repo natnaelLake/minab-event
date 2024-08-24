@@ -1,0 +1,8 @@
+mutation LikedEvent($event_id: uuid!, $user_id: uuid!) {
+  insert_likes_one(object: { event_id: $event_id, user_id: $user_id }) {
+    created_at
+    event_id
+    id
+    user_id
+  }
+}

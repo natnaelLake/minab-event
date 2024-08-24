@@ -10,3 +10,7 @@ body {
   padding: 0;
   line-height: 1.6;
 }
+
+.text-sm.flex.items-center svg {
+  stroke-width: 1.5;
+}

@@ -1,0 +1,10 @@
+query GetAllEvents($event_id: uuid!) {
+  tickets(where: { event_id: { _eq: $event_id } }) {
+    event_id
+    id
+    purchased_at
+    quantity
+    total_price
+    user_id
+  }
+}

@@ -223,7 +223,7 @@ import LocationMap from "@/components/LocationMap.vue";
 const authStore = useAuthStore();
 const router = useRouter();
 const { mutate: createEvent, loading: createEventLoading, onDone: onCreateEventDone, onError: onCreateEventError } = useMutation(createEventMutation);
-const { mutate: uploadImage, loading: uploadImageLoading, onDone: onUploadImageDone, onError: onUploadImageError } = useMutation(UploadImageMutation);
+const { mutate: uploadImages, loading: uploadImageLoading, onDone: onUploadImageDone, onError: onUploadImageError } = useMutation(UploadImageMutation);
 
 
 const showModal = ref(false);
@@ -333,10 +333,11 @@ const validateForm = () => {
 
   return !(locationError.value || tagsError.value || categoryError.value);
 };
-
 const onSubmit = async (values) => {
   // Ensure all selected images are assigned and reset any previous errors
   const files = values.featured_image_url;
+  console.log('[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]', files);
+  
   if (!files || files.length === 0) {
     toast.error("No files selected", { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
     return;
@@ -345,38 +346,34 @@ const onSubmit = async (values) => {
   if (!validateForm()) return; // Prevent submission if there are errors
 
   try {
-    let uploadedImages = [];
-
-    for (const file of files) {
-      const reader = new FileReader();
-
-      const imageUploadPromise = new Promise((resolve, reject) => {
-        reader.onloadend = async () => {
+    const readFilesAsBase64 = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
           if (reader.result) {
-            const base64File = reader.result.split(",")[1];
-            try {
-              const { data } = await uploadImage({ files: [{ file: base64File }] });
-              const imageUrl = data.uploadImage.imageUrl;
-              resolve(imageUrl);
-            } catch (uploadError) {
-              reject(new Error("Error uploading file: " + uploadError.message));
-            }
+            resolve(reader.result.split(",")[1]); // Return only the base64 part
           } else {
             reject(new Error("Failed to read file"));
           }
         };
-
         reader.readAsDataURL(file);
       });
+    };
 
-      try {
-        const imageUrl = await imageUploadPromise;
-        uploadedImages.push(imageUrl);
-      } catch (error) {
-        toast.error(error.message, { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
-        return;
-      }
+    // Convert all files to base64 in parallel
+    const base64Files = await Promise.all(files.map(file => readFilesAsBase64(file)));
+
+    // Prepare the input object as per mutation requirement
+    const uploadImagesInput = { input: { files: base64Files } };
+
+    // Perform the mutation to upload images
+    const { data } = await uploadImages(uploadImagesInput);
+
+    if (!data || !data.uploadImages || !data.uploadImages.imageUrls) {
+      throw new Error("Failed to upload images");
     }
+
+    const uploadedImages = data.uploadImages.imageUrls;
 
     // Prepare input for event creation
     const input = {
@@ -385,11 +382,14 @@ const onSubmit = async (values) => {
       location: selectedLocation.value ? `${selectedLocation.value[0]},${selectedLocation.value[1]}` : values.location,
       venue: values.venue,
       price: parseFloat(values.price) || 0,
+      quantity: parseInt(values.quantity) || 1,
       preparation_time: values.preparation_time,
       event_date: values.event_date,
-      tags: `{${selectedTagValues.value.join(",")}}`, // Convert to PostgreSQL array format
-      categories: `{${selectedCategoryValues.value.join(",")}}`, // Convert to PostgreSQL array format
-      featured_image_url: `{${uploadedImages.join(",")}}`, // Store all uploaded image URLs as a PostgreSQL array
+      event_start_time: values.event_start_time,
+      event_end_time: values.event_end_time,
+      tags: `{${selectedTagValues.value.join(",")}}`, 
+      categories: `{${selectedCategoryValues.value.join(",")}}`, 
+      featured_image_url: `{${uploadedImages.join(",")}}`, 
       user_id: authStore.user.id,
     };
 
@@ -401,6 +401,7 @@ const onSubmit = async (values) => {
     toast.error("Error creating event: " + error.message, { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
   }
 };
+
 
 
 // Listen for custom event from LocationMap
@@ -466,7 +467,36 @@ const eventSchema = {
         error: "text-red-500 text-sm mt-1",
       },
     },
-
+    {
+      as: "input",
+      name: "event_start_time",
+      label: "Event Start Time",
+      placeholder: "Select event end time",
+      type: "time",
+      rules: yup.string().required("Event start time is required"),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input:
+          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
+    {
+      as: "input",
+      name: "event_end_time",
+      label: "Event End Time",
+      placeholder: "Select event end time",
+      type: "time",
+      rules: yup.string().required("Event end time is required"),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input:
+          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
     {
       as: "input",
       name: "venue",
@@ -482,21 +512,6 @@ const eventSchema = {
         error: "text-red-500 text-sm mt-1",
       },
     },
-    // {
-    //   as: "input",
-    //   name: "address",
-    //   label: "Address",
-    //   placeholder: "Enter address",
-    //   type: "text",
-    //   rules: yup.string().required("Address is required"),
-    //   class: {
-    //     wrapper: "mb-5",
-    //     label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
-    //     input:
-    //       "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
-    //     error: "text-red-500 text-sm mt-1",
-    //   },
-    // },
     {
       as: "input",
       name: "price",
@@ -507,6 +522,24 @@ const eventSchema = {
         .number()
         .required("Price is required field")
         .min(0, "Price cannot be negative"),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input:
+          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
+    {
+      as: "input",
+      name: "quantity",
+      label: "Total Capacity",
+      placeholder: "Enter Total Holding capacity",
+      type: "number",
+      rules: yup
+        .number()
+        .required("Total Capacity is required field")
+        .min(1, "Total Capacity cannot be  less than 1"),
       class: {
         wrapper: "mb-5",
         label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",

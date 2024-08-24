@@ -1,0 +1,31 @@
+query GetAllEvents($limit: Int, $offset: Int, $order_by: [events_order_by!]) {
+  events(limit: $limit, offset: $offset, order_by: $order_by) {
+    categories
+    created_at
+    description
+    event_date
+    event_start_time
+    event_end_time
+    featured_image_url
+    id
+    location
+    preparation_time
+    price
+    quantity
+    tags
+    title
+    updated_at
+    user_id
+    venue
+    user {
+      created_at
+      email
+      first_name
+      id
+      last_name
+      password
+      profile_image_url
+    }
+  }
+}
+

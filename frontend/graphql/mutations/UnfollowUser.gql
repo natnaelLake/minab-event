@@ -1,0 +1,13 @@
+mutation UnfollowUser($followerId: uuid!, $userId: uuid!) {
+  delete_follows(
+    where: {
+      _and: [
+        { follower_id: { _eq: $followerId } },
+        { user_id: { _eq: $userId } }
+      ]
+    }
+  ) {
+    affected_rows
+  }
+}
+

@@ -7,6 +7,7 @@
       <Filter />
     </div>
 
+    <!-- Main Content -->
     <div class="flex-1 ml-64 p-6">
       <!-- Search Bar -->
       <div class="mb-6">
@@ -26,19 +27,42 @@
         >
           <EventCard
             :header="{
-              avatar: event.ownerAvatar,
-              name: event.ownerName,
-              actions: event.headerActions,
+              avatar: event.user.profile_image_url || 'default-avatar.png',
+              name: `${event.user.first_name} ${event.user.last_name}`,
+              actions: [
+                {
+                  icon: bookMarks && bookMarks.includes(event.id)
+                    ? 'fa-solid fa-bookmark text-green-500'
+                    : 'fa-regular fa-bookmark text-gray-500',
+                  handler: () => handleEventBookMark(event),
+                },
+                {
+                  icon: likes && likes.includes(event.id)
+                    ? 'fa-solid fa-heart text-red-500'
+                    : 'fa-regular fa-heart text-gray-500',
+                  handler: () => handleEventLike(event),
+                },
+              ],
             }"
-            :image="{ src: event.imageSrc, alt: event.imageAlt }"
+            :image="{
+              src: event.featured_image_url.split(',')[0].replace('{', ''), // Use the first image and remove '{'
+              alt: event.title,
+            }"
             :title="event.title"
             :description="event.description"
-            :address="event.address"
-            :price="event.price"
-            :deadline="event.deadline"
+            :address="event.venue"
+            :price="`$${event.price}`"
+            :deadline="
+              formatEventDate(event.event_date, event.event_start_time)
+            "
             :footer="{
-              reserve: event.reserve,
-              postTime: { text: event.postTime },
+              reserve: {
+                handler: () => showCheckoutModal(event),
+                class: 'bg-blue-500 text-white px-4 py-2 rounded',
+              },
+              postTime: {
+                text: handleFormatDistance(event.created_at),
+              },
             }"
             @navigate="goToEventDetail(event.id)"
             class="dark:bg-white text-black"
@@ -47,328 +71,318 @@
       </div>
     </div>
   </div>
+
+  <!-- Checkout Modal -->
+  <div
+    v-if="showCheckout"
+    class="fixed inset-0 z-50 flex items-center justify-center"
+  >
+    <div class="fixed inset-0 bg-black opacity-50"></div>
+    <div
+      class="bg-white w-full max-w-md p-6 rounded-lg shadow-2xl z-50 relative"
+    >
+      <button
+        class="absolute top-2 right-2 text-gray-600"
+        @click="closeCheckoutModal"
+      >
+        &times;
+      </button>
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">Checkout</h2>
+
+      <!-- Ticket Price Section -->
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-lg font-medium text-gray-700"
+            >Price Per Ticket:</span
+          >
+          <span class="text-2xl font-bold text-gray-800"
+            >${{ selectedEvent?.price }}</span
+          >
+        </div>
+      </div>
+
+      <!-- Quantity and Total Price Section -->
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex flex-col">
+          <label for="quantity" class="text-sm font-medium text-gray-600 mb-1"
+            >Quantity</label
+          >
+          <input
+            id="quantity"
+            type="number"
+            min="1"
+            :max="availableTickets"
+            v-model.number="ticketQuantity"
+            class="border border-gray-300 rounded-lg px-3 py-2 text-gray-700 w-20"
+          />
+        </div>
+        <div class="text-right">
+          <span class="text-lg font-medium text-gray-600">Total Price:</span>
+          <span class="text-xl font-bold text-gray-800">${{ totalPrice }}</span>
+        </div>
+      </div>
+
+      <!-- Reserve Button Section -->
+      <div class="mt-4">
+        <button
+          :class="{
+            'bg-gray-500 text-white': isEventReserved,
+            'bg-blue-500 text-white hover:bg-blue-600': !isEventReserved,
+          }"
+          @click="handleReserveEvent"
+          class="w-full px-6 py-3 rounded-full shadow-lg transition duration-200 ease-in-out text-lg font-semibold"
+          :disabled="isEventReserved"
+        >
+          {{ isEventReserved ? "Reserved" : "Buy Ticket" }}
+        </button>
+      </div>
+
+      <!-- Ticket Availability Info -->
+      <div class="text-sm text-gray-600 mt-4">
+        <p>Available: {{ availableTickets }}</p>
+        <p>Sold: {{ soldTickets }}</p>
+      </div>
+    </div>
+  </div>
 </template>
-
 <script setup>
+import { ref, computed, watch, onMounted } from "vue";
+import { useQuery, useMutation } from "@vue/apollo-composable";
+import { useRouter, useRoute } from "vue-router";
 import EventCard from "~/components/EventCard.vue";
-import { useRouter } from "vue-router";
 import Filter from "~/components/Filter.vue";
-import "@fortawesome/fontawesome-free/css/all.css";
+import GetEvents from "~/graphql/query/GetEvents.gql";
+import GetReservedTickets from "~/graphql/query/GetReservedTickets.gql";
+import BookMarkEvent from "~/graphql/mutations/BookMarkEvent.gql";
+import LikeEvent from "~/graphql/mutations/LikeEvent.gql";
+import UNBookMarkEvent from "~/graphql/mutations/UNBookMarkEvent.gql";
+import UNLikeEvent from "~/graphql/mutations/UNLikeEvent.gql";
+import GetEventLike from "~/graphql/query/GetEventLike.gql";
+import GetEventBookMark from "~/graphql/query/GetEventBookMark.gql";
+import RESERVE_TICKET from "~/graphql/mutations/ReserveTicket.gql";
+import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
+import { formatDistance, format } from "date-fns";
+import { toast } from "vue3-toastify";
+import { useAuthStore } from "~/store";
 
+// Router and Auth Store
 const router = useRouter();
+const route = useRoute();
+const user = useAuthStore();
 
-function toggleBookmark(event) {
-  console.log('***********xxxxxxxxxx',event);
+// Reactive State
+const events = ref([]);
+const ticketQuantity = ref(1);
+const selectedEvent = ref(null);
+const showCheckout = ref(false);
+const isEventReserved = ref(false);
+const currentUser = user.id;
+const eventId = route.params.id;
+const eventData = ref(null);
+const tickets = ref([]);
+const bookMarks = ref([]);
+const likes = ref([]);
+
+// Fetch Events Query
+const {
+  onResult: eventResult,
+  onError: eventError,
+  refetch,
+} = useQuery(GetEvents, {
+  limit: 10,
+  offset: 0,
+  order_by: [{ created_at: "desc" }],
+});
+
+// Handle Query Result
+eventResult((result) => {
+  events.value = result.data.events;
+});
+
+eventError((error) => {
+  console.error("Error: ", error.message);
+  toast.error("Something went wrong, try again", {
+    transition: toast.TRANSITIONS.FLIP,
+    position: toast.POSITION.TOP_RIGHT,
+  });
+});
+
+// Computed Properties
+const totalPrice = computed(
+  () => ticketQuantity.value * (selectedEvent.value?.price || 0)
+);
+const availableTickets = computed(
+  () =>
+    selectedEvent.value.quantity -
+    tickets.value.reduce((sum, ticket) => sum + ticket.quantity, 0)
+);
+const soldTickets = computed(() =>
+  selectedEvent.value
+    ? selectedEvent.value.quantity - availableTickets.value
+    : 0
+);
+
+const { mutate: reserveTicket } = useMutation(RESERVE_TICKET);
+const { mutate: unReserveTicket } = useMutation(UNRESERVE_TICKET);
+const { mutate: unLikeEvent } = useMutation(UNLikeEvent);
+const { mutate: likeEvent } = useMutation(LikeEvent);
+const { mutate: bookMarkEvent } = useMutation(BookMarkEvent);
+const { mutate: unBookMarkEvent } = useMutation(UNBookMarkEvent);
+
+// Methods
+onMounted(() => {
+  events.value.forEach((event) => {
+    checkBookmark(event);
+    checkLike(event);
+  });
+});
+
+const checkBookmark = (event) => {
+  const { onResult: bookmarkResult } = useQuery(GetEventBookMark, {
+    event_id: event.id,
+  });
+  bookmarkResult((result) => {
+    console.log('++++++++++++YYYYYYYYYYYYYY',result.data.bookmarks)
+    const isBookmarked = result.data.bookmarks.some(
+      (bookmark) =>
+        bookmark.event_id === event.id && bookmark.user_id === currentUser
+    );
+    if (isBookmarked) {
+      bookMarks.value.push(event.id);
+    }
+  });
+};
+
+const checkLike = (event) => {
+  const { onResult: likeResult } = useQuery(GetEventLike, {
+    event_id: event.id,
+  });
+
+  likeResult((result) => {
+    const isLiked = result.data.likes.some(
+      (like) => like.event_id === event.id && like.user_id === currentUser
+    );
+    if (isLiked) {
+      likes.value.push(event.id);
+    }
+  });
+};
+
+const handleEventBookMark = async (event) => {
+  try {
+    if (bookMarks.value.includes(event.id)) {
+      await unBookMarkEvent({
+        event_id: event.id,
+        user_id: currentUser,
+      });
+      bookMarks.value = bookMarks.value.filter((id) => id !== event.id);
+      toast.success("Event UnBookMarked successfully.");
+    } else {
+      await bookMarkEvent({
+        event_id: event.id,
+        user_id: currentUser,
+      });
+      bookMarks.value.push(event.id);
+      toast.success("Event BookMarked successfully.");
+    }
+  } catch (error) {
+    console.error("Error updating bookmark status:", error);
+    toast.error("Failed to update bookmark status.");
+  }
+};
+
+const handleEventLike = async (event) => {
+  try {
+    if (likes.value.includes(event.id)) {
+      await unLikeEvent({
+        event_id: event.id,
+        user_id: currentUser,
+      });
+      likes.value = likes.value.filter((id) => id !== event.id);
+      toast.success("Event unLiked successfully.");
+    } else {
+      await likeEvent({
+        event_id: event.id,
+        user_id: currentUser,
+      });
+      likes.value.push(event.id);
+      toast.success("Event Liked successfully.");
+    }
+  } catch (error) {
+    console.error("Error updating like status:", error);
+    toast.error("Failed to update like status.");
+  }
+};
+const handleReserveEvent = async () => {
+  try {
+    if (isEventReserved.value) {
+      await unReserveTicket({
+        event_id: selectedEvent.value.id,
+        user_id: currentUser,
+      });
+      isEventReserved.value = false;
+      toast.success("Event unreserved successfully.");
+    } else {
+      await reserveTicket({
+        event_id: selectedEvent.value.id,
+        user_id: currentUser,
+        quantity: ticketQuantity.value,
+        total_price: totalPrice.value,
+      });
+      isEventReserved.value = true;
+      toast.success("Event reserved successfully.");
+    }
+    closeCheckoutModal();
+  } catch (error) {
+    console.error("Error updating reservation status:", error);
+    toast.error("Failed to update reservation status.");
+  }
+};
+
+const toggleBookmark = (event) => {
   event.isBookmarked = !event.isBookmarked;
-  event.actions[0] = {
-    ...event.actions[0], // Spread the existing action object
-    icon: event.isBookmarked
-      ? "fa-solid fa-bookmark text-green-500"
-      : "fa-regular fa-bookmark text-gray-500"
-  };
-}
+};
 
-function toggleFollow(event) {
+const toggleFollow = (event) => {
   event.isFollowed = !event.isFollowed;
-  event.actions[1] = {
-    ...event.actions[1],
-    icon: event.isFollowed
-      ? "fa-solid fa-star text-green-500"
-      : "fa-regular fa-star text-gray-500"
-  };
-}
-
+};
 
 const goToEventDetail = (eventId) => {
   router.push(`/event/${eventId}`);
 };
 
-const events = [
-  {
-    id: 1,
-    ownerAvatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
-    ownerName: "John Doe",
-    isBookmarked: false, // Add this
-    isFollowed: false, // Add this
-    headerActions: [
-      {
-        icon: "fa-solid fa-bookmark", // Use FontAwesome class
-        handler: (event) => toggleBookmark(event),
-        class: "text-gray-600",
-      },
-      {
-        icon: "fa-solid fa-star", // Use FontAwesome class
-        handler: (event) => toggleFollow(event),
-        class: "text-yellow-500",
-      },
-    ],
-    imageSrc:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s",
-    imageAlt: "Event Image 1",
-    title: "Music Concert",
-    description:
-      "Join us for a night of amazing music and fun! fdsf dsfdsfdsfdsrev vdfeerf dfewresfds fdsrewfds ",
-    price: "$50",
-    address: "123 Music Lane, Cityville",
-    deadline: "2024-09-15",
-    reserve: {
-      handler: () => alert("Reserve clicked!"),
-      class: "bg-blue-500 text-white px-4 py-2 rounded",
-    },
-    postTime: "Posted 2 hours ago",
-  },
-  {
-    id: 2,
-    ownerAvatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
-    ownerName: "John Doe",
-    headerActions: [
-      {
-        icon: "🔖",
-        handler: () => alert("Bookmark clicked!"),
-        class: "text-gray-600",
-      },
-      {
-        icon: "⭐",
-        handler: () => alert("Follow clicked!"),
-        class: "text-yellow-500",
-      },
-    ],
-    imageSrc:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s",
-    imageAlt: "Event Image 2",
-    title: "Art Exhibition",
-    description: "Explore a diverse range of artistic expressions.",
-    price: "$30",
-    address: "456 Art St, Gallery City",
-    deadline: "2024-10-01",
-    reserve: {
-      handler: () => alert("Reserve clicked!"),
-      class: "bg-blue-500 text-white px-4 py-2 rounded",
-    },
-    postTime: "Posted 3 hours ago",
-  },
-  {
-    id: 3,
-    ownerAvatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
-    ownerName: "Jane Smith",
-    headerActions: [
-      {
-        icon: "🔖",
-        handler: () => alert("Bookmark clicked!"),
-        class: "text-gray-600",
-      },
-      {
-        icon: "⭐",
-        handler: () => alert("Follow clicked!"),
-        class: "text-yellow-500",
-      },
-    ],
-    imageSrc:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s",
-    imageAlt: "Event Image 3",
-    title: "Food Festival",
-    description: "Taste delicious dishes from around the world.",
-    price: "$20",
-    address: "789 Culinary Ave, Foodtown",
-    deadline: "2024-09-30",
-    reserve: {
-      handler: () => alert("Reserve clicked!"),
-      class: "bg-blue-500 text-white px-4 py-2 rounded",
-    },
-    postTime: "Posted 4 hours ago",
-  },
-  {
-    id: 4,
-    ownerAvatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
-    ownerName: "Alex Johnson",
-    headerActions: [
-      {
-        icon: "🔖",
-        handler: () => alert("Bookmark clicked!"),
-        class: "text-gray-600",
-      },
-      {
-        icon: "⭐",
-        handler: () => alert("Follow clicked!"),
-        class: "text-yellow-500",
-      },
-    ],
-    imageSrc:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s",
-    imageAlt: "Event Image 4",
-    title: "Tech Conference",
-    description:
-      "Join industry leaders in discussing the future of technology.",
-    price: "$100",
-    address: "101 Tech Park, Innovate City",
-    deadline: "2024-11-15",
-    reserve: {
-      handler: () => alert("Reserve clicked!"),
-      class: "bg-blue-500 text-white px-4 py-2 rounded",
-    },
-    postTime: "Posted 5 hours ago",
-  },
-  {
-    id: 5,
-    ownerAvatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
-    ownerName: "Emily Davis",
-    headerActions: [
-      {
-        icon: "🔖",
-        handler: () => alert("Bookmark clicked!"),
-        class: "text-gray-600",
-      },
-      {
-        icon: "⭐",
-        handler: () => alert("Follow clicked!"),
-        class: "text-yellow-500",
-      },
-    ],
-    imageSrc:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s",
-    imageAlt: "Event Image 5",
-    title: "Outdoor Adventure",
-    description:
-      "Experience the thrill of nature with guided outdoor activities.",
-    price: "$80",
-    address: "202 Adventure Rd, Nature City",
-    deadline: "2024-10-20",
-    reserve: {
-      handler: () => alert("Reserve clicked!"),
-      class: "bg-blue-500 text-white px-4 py-2 rounded",
-    },
-    postTime: "Posted 6 hours ago",
-  },
-  {
-    id: 6,
-    ownerAvatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
-    ownerName: "Mark Lee",
-    headerActions: [
-      {
-        icon: "🔖",
-        handler: () => alert("Bookmark clicked!"),
-        class: "text-gray-600",
-      },
-      {
-        icon: "⭐",
-        handler: () => alert("Follow clicked!"),
-        class: "text-yellow-500",
-      },
-    ],
-    imageSrc:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s",
-    imageAlt: "Event Image 6",
-    title: "Comedy Show",
-    description: "Laugh the night away with our lineup of top comedians.",
-    price: "$40",
-    address: "303 Comedy Lane, Laugh City",
-    deadline: "2024-09-25",
-    reserve: {
-      handler: () => alert("Reserve clicked!"),
-      class: "bg-blue-500 text-white px-4 py-2 rounded",
-    },
-    postTime: "Posted 7 hours ago",
-  },
-  {
-    id: 7,
-    ownerAvatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
-    ownerName: "Sarah Brown",
-    headerActions: [
-      {
-        icon: "🔖",
-        handler: () => alert("Bookmark clicked!"),
-        class: "text-gray-600",
-      },
-      {
-        icon: "⭐",
-        handler: () => alert("Follow clicked!"),
-        class: "text-yellow-500",
-      },
-    ],
-    imageSrc:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s",
-    imageAlt: "Event Image 7",
-    title: "Yoga Retreat",
-    description: "Rejuvenate your mind and body with our yoga retreat.",
-    price: "$120",
-    address: "404 Wellness Blvd, Serenity City",
-    deadline: "2024-11-01",
-    reserve: {
-      handler: () => alert("Reserve clicked!"),
-      class: "bg-blue-500 text-white px-4 py-2 rounded",
-    },
-    postTime: "Posted 8 hours ago",
-  },
-  {
-    id: 8,
-    ownerAvatar:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s",
-    ownerName: "Linda Martinez",
-    headerActions: [
-      {
-        icon: "🔖",
-        handler: () => alert("Bookmark clicked!"),
-        class: "text-gray-600",
-      },
-      {
-        icon: "⭐",
-        handler: () => alert("Follow clicked!"),
-        class: "text-yellow-500",
-      },
-    ],
-    imageSrc:
-      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s",
-    imageAlt: "Event Image 8",
-    title: "Craft Fair",
-    description: "Discover unique handmade crafts and artworks.",
-    price: "$25",
-    address: "505 Craft Ave, Art City",
-    deadline: "2024-09-22",
-    reserve: {
-      handler: () => alert("Reserve clicked!"),
-      class: "bg-blue-500 text-white px-4 py-2 rounded",
-    },
-    postTime: "Posted 9 hours ago",
-  },
-];
+const handleFormatDistance = (date) => {
+  return formatDistance(new Date(date), new Date(), { addSuffix: true });
+};
+
+const formatEventDate = (date, eventTime) => {
+  return format(new Date(date), "'Time: 'MMM do yyyy") + " at " + eventTime;
+};
+
+const showCheckoutModal = (event) => {
+  const { onResult: reservedTicketsResult } = useQuery(GetReservedTickets, {
+    event_id: event.id,
+  });
+
+  reservedTicketsResult((result) => {
+    tickets.value = result.data.tickets;
+    isEventReserved.value = result.data.tickets.some(
+      (ticket) => ticket.event_id === event.id
+    );
+  });
+
+  selectedEvent.value = event;
+  showCheckout.value = true;
+};
+
+const closeCheckoutModal = () => {
+  showCheckout.value = false;
+  ticketQuantity.value = 1; // Reset quantity when closing modal
+};
 </script>
 <style scoped>
-/* Make sure the filter and search bar are non-scrollable */
 .fixed {
   position: fixed;
-  height: calc(100vh - 20px); /* Full viewport height minus top margin */
-  overflow-y: auto; /* Enable vertical scrolling */
-}
-
-.ml-64 {
-  margin-left: 16rem; /* Adjust to the width of your filter */
-}
-
-.search-bar {
-  position: relative;
-  z-index: 10; /* Ensure it's above the event cards */
-}
-
-.event-cards {
-  margin-left: 16rem; /* Same as filter width */
-  padding: 1.5rem; /* Adjust padding as needed */
-}
-
-@media (max-width: 768px) {
-  .ml-64 {
-    margin-left: 0;
-  }
-
-  .fixed {
-    position: relative;
-    height: auto;
-  }
+  height: 100%;
 }
 </style>

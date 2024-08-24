@@ -1,0 +1,12 @@
+mutation UnreserTicket($event_id: uuid!, $userId: uuid!) {
+  delete_tickets(
+    where: {
+      _and: [
+        { event_id: { _eq: $event_id } },
+        { user_id: { _eq: $userId } }
+      ]
+    }
+  ) {
+    affected_rows
+  }
+}

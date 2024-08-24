@@ -4,8 +4,11 @@ mutation CreateEvent(
   $location: String!
   $venue: String!
   $price: numeric!
+  $quantity: Int!
   $preparation_time: interval!
   $event_date: timestamptz!
+  $event_start_time: String!
+  $event_end_time: String!
   $tags: _text!
   $categories: _text!
   $featured_image_url: String!
@@ -18,17 +21,21 @@ mutation CreateEvent(
       location: $location
       venue: $venue
       price: $price
+      quantity: $quantity
       preparation_time: $preparation_time
       event_date: $event_date
       tags: $tags
       categories: $categories
       featured_image_url: $featured_image_url
       user_id: $user_id
+      event_start_time: $event_start_time
+      event_end_time: $event_end_time
     }
   ) {
     location
     preparation_time
     price
+    quantity
     tags
     title
     updated_at
@@ -37,6 +44,8 @@ mutation CreateEvent(
     id
     featured_image_url
     event_date
+    event_start_time
+    event_end_time
     description
     created_at
     categories

@@ -1,0 +1,7 @@
+mutation UpdateCategory($category_id: uuid!, $changes: categories_set_input!) {
+  update_categories_by_pk(pk_columns: {id: $category_id},_set: $changes) {
+    created_at
+    id
+    name
+  }
+}

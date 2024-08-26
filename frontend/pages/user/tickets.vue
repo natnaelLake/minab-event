@@ -1,156 +1,89 @@
 <template>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-28 p-10">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-28 p-10">
+    <div
+      v-for="ticket in tickets"
+      :key="ticket.id"
+      class="overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+    >
       <EventCard
-        v-for="event in events"
-        :key="event.id"
-        :header="{ avatar: event.ownerAvatar, name: event.ownerName, actions: event.headerActions }"
-        :image="{ src: event.imageSrc, alt: event.imageAlt }"
-        :title="event.title"
-        :description="event.description"
-        :footer="{ reserve: event.reserve, postTime: { text: event.postTime } }"
+        :header="{
+          avatar: ticket.event.user.profile_image_url,
+          name: ticket.event.user.first_name,
+        }"
+        :image="{
+          src: ticket.event.featured_image_url.split(',')[0].replace('{', ''), // Use the first image and remove '{'
+          alt: ticket.event.title,
+        }"
+        :title="ticket.event.title"
+        :description="ticket.event.description"
+        :address="ticket.event.venue"
+        :price="`Total ${ticket.quantity} tickets by $${ticket.total_price}`"
+        :deadline="
+          formatEventDate(
+            ticket.event.event_date,
+            ticket.event.event_start_time
+          )
+        "
+        :footer="{
+          postTime: {
+            text: `Purchased : ${handleFormatDistance(ticket.purchased_at)} `,
+          },
+        }"
+        @navigate="goToEventDetail(ticket.event.id)"
       />
     </div>
-  </template>
-  <script setup>
-  import EventCard from '~/components/EventCard.vue';
-  
-  
-  const events = [
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun! fdsf dsfdsfdsfdsrev vdfeerf dfewresfds fdsrewfds ',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun!',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun!',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun!',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun!',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun!',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun!',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun!',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-    {
-      id: 1,
-      ownerAvatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS5_JC2T02lxtB6JgjqZXbWkE-jiHGaejssAw&s',
-      ownerName: 'John Doe',
-      headerActions: [
-        { icon: '🔖', handler: () => alert('Bookmark clicked!'), class: 'text-gray-600' },
-        { icon: '⭐', handler: () => alert('Follow clicked!'), class: 'text-yellow-500' },
-      ],
-      imageSrc: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQwC_a-pMFNFKn0INHjDNq_y1vggkf2VRRYNg&s',
-      imageAlt: 'Event Image 1',
-      title: 'Music Concert',
-      description: 'Join us for a night of amazing music and fun!',
-      reserve: { handler: () => alert('Reserve clicked!'), class: 'bg-blue-500 text-white px-4 py-2 rounded' },
-      postTime: 'Posted 2 hours ago',
-    },
-  ];
-  </script>
-  
+  </div>
+</template>
+<script setup>
+import { ref, onMounted } from "vue";
+import EventCard from "~/components/EventCard.vue";
+import GetMyReservedTickets from "~/graphql/query/GetReservedTicket.gql";
+import { useQuery } from "@vue/apollo-composable";
+import { useRouter } from "vue-router";
+import { toast } from "vue3-toastify";
+import { useAuthStore } from "~/store";
+import { format, formatDistance } from "date-fns";
+
+const router = useRouter();
+const user = useAuthStore();
+const currentUser = user.id;
+const tickets = ref([]);
+
+onMounted(async () => {
+  await fetchMyReservedEvents();
+});
+
+const fetchMyReservedEvents = async () => {
+  try {
+    const { onResult, onError } = useQuery(GetMyReservedTickets, {
+      limit: 10,
+      offset: 0,
+      order_by: [{ purchased_at: "desc" }],
+      user_id: currentUser,
+    });
+
+    onResult((result) => {
+      if (result.data) {
+        tickets.value = result.data.tickets;
+      }
+    });
+
+    onError((error) => {
+      console.error("Error fetching events: ", error.message);
+      toast.error("Something went wrong, try again");
+    });
+  } catch (error) {
+    console.error("Error during fetching events: ", error);
+    toast.error("Failed to load events.");
+  }
+};
+const formatEventDate = (date, eventTime) => {
+  return format(new Date(date), "'Time: 'MMM do yyyy") + " at " + eventTime;
+};
+const goToEventDetail = (eventId) => {
+  router.push(`/event/${eventId}`);
+};
+const handleFormatDistance = (date) => {
+  return formatDistance(new Date(date), new Date(), { addSuffix: true });
+};
+</script>

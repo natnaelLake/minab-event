@@ -52,6 +52,7 @@
 
         <!-- Follow Button -->
         <button
+          v-if="currentUser !== eventData.user.id"
           @click="followOwner()"
           :class="{
             'bg-red-600': isFollowing,
@@ -224,7 +225,7 @@
 
       <!-- Quantity and Total Price Section -->
       <div class="flex items-center justify-between mb-4">
-        <div class="flex flex-col">
+        <div v-if="currentUser !== eventData.user.id" class="flex flex-col">
           <label for="quantity" class="text-sm font-medium text-gray-600 mb-1"
             >Quantity</label
           >
@@ -244,7 +245,7 @@
       </div>
 
       <!-- Reserve Button Section -->
-      <div class="mt-4">
+      <div class="mt-4" v-if="currentUser !== eventData.user.id">
         <button
           :class="
             isEventReserved
@@ -262,7 +263,7 @@
       <!-- Ticket Availability Info -->
       <div class="text-sm text-gray-600 mt-4">
         <p>Available: {{ availableTickets }}</p>
-        <p>Sold: {{ soldTickets}}</p>
+        <p>Sold: {{ soldTickets }}</p>
       </div>
     </div>
   </div>
@@ -475,12 +476,13 @@ const availableTickets = computed(
     eventData.value.quantity -
     tickets.value.reduce((sum, ticket) => sum + ticket.quantity, 0)
 );
-const soldTickets = computed(()=>eventData.value.quantity - availableTickets.value)
+const soldTickets = computed(
+  () => eventData.value.quantity - availableTickets.value
+);
 // Handle event ticket reservation
 const handleReserveEvent = async () => {
   try {
     if (isEventReserved.value) {
-
       await unReserveTicket({
         event_id: eventId,
         user_id: currentUser,

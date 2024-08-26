@@ -41,7 +41,7 @@
     "pinia-plugin-persistedstate": "^3.2.0",
     "primevue": "^4.0.4",
     "v-click-outside": "^3.2.0",
-    "vee-validate": "^4.11.8",
+    "vee-validate": "^4.13.2",
     "vue": "latest",
     "vue-awesome-paginate": "^1.1.46",
     "vue-filepond": "^7.0.4",

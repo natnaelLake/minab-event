@@ -1,0 +1,7 @@
+mutation UpdateEvent($id: uuid!, $changes: events_set_input!) {
+  update_events_by_pk(pk_columns: { id: $id }, _set: $changes) {
+    id
+    title
+    description
+  }
+}

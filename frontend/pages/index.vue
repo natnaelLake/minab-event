@@ -4,7 +4,7 @@
     <div
       class="w-64 bg-gray-100 p-2 pb-16 fixed top-20 left-0 h-screen overflow-scroll"
     >
-      <Filter />
+      <Filter @apply-filters="updateFilters" />
     </div>
 
     <!-- Main Content -->
@@ -12,6 +12,7 @@
       <!-- Search Bar -->
       <div class="mb-6">
         <input
+          v-model="searchTerm"
           type="text"
           placeholder="Search events..."
           class="w-full border border-gray-300 rounded-lg px-4 py-2"
@@ -23,7 +24,7 @@
         <div
           v-for="event in events"
           :key="event.id"
-          class="bg-white text-black shadow-lg rounded-lg overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
+          class="overflow-hidden hover:shadow-xl transition-shadow duration-300 cursor-pointer"
         >
           <EventCard
             :header="{
@@ -31,15 +32,17 @@
               name: `${event.user.first_name} ${event.user.last_name}`,
               actions: [
                 {
-                  icon: bookMarks && bookMarks.includes(event.id)
-                    ? 'fa-solid fa-bookmark text-green-500'
-                    : 'fa-regular fa-bookmark text-gray-500',
+                  icon:
+                    bookMarks && bookMarks.includes(event.id)
+                      ? 'fa-solid fa-bookmark text-green-500'
+                      : 'fa-regular fa-bookmark text-gray-500',
                   handler: () => handleEventBookMark(event),
                 },
                 {
-                  icon: likes && likes.includes(event.id)
-                    ? 'fa-solid fa-heart text-red-500'
-                    : 'fa-regular fa-heart text-gray-500',
+                  icon:
+                    likes && likes.includes(event.id)
+                      ? 'fa-solid fa-heart text-red-500'
+                      : 'fa-regular fa-heart text-gray-500',
                   handler: () => handleEventLike(event),
                 },
               ],
@@ -146,7 +149,7 @@
   </div>
 </template>
 <script setup>
-import { ref, computed, watch, onMounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useQuery, useMutation } from "@vue/apollo-composable";
 import { useRouter, useRoute } from "vue-router";
 import EventCard from "~/components/EventCard.vue";
@@ -174,6 +177,7 @@ const user = useAuthStore();
 const events = ref([]);
 const ticketQuantity = ref(1);
 const selectedEvent = ref(null);
+const searchTerm = ref("");
 const showCheckout = ref(false);
 const isEventReserved = ref(false);
 const currentUser = user.id;
@@ -182,32 +186,8 @@ const eventData = ref(null);
 const tickets = ref([]);
 const bookMarks = ref([]);
 const likes = ref([]);
+const filters = ref({});
 
-// Fetch Events Query
-const {
-  onResult: eventResult,
-  onError: eventError,
-  refetch,
-} = useQuery(GetEvents, {
-  limit: 10,
-  offset: 0,
-  order_by: [{ created_at: "desc" }],
-});
-
-// Handle Query Result
-eventResult((result) => {
-  events.value = result.data.events;
-});
-
-eventError((error) => {
-  console.error("Error: ", error.message);
-  toast.error("Something went wrong, try again", {
-    transition: toast.TRANSITIONS.FLIP,
-    position: toast.POSITION.TOP_RIGHT,
-  });
-});
-
-// Computed Properties
 const totalPrice = computed(
   () => ticketQuantity.value * (selectedEvent.value?.price || 0)
 );
@@ -229,20 +209,80 @@ const { mutate: likeEvent } = useMutation(LikeEvent);
 const { mutate: bookMarkEvent } = useMutation(BookMarkEvent);
 const { mutate: unBookMarkEvent } = useMutation(UNBookMarkEvent);
 
-// Methods
-onMounted(() => {
-  events.value.forEach((event) => {
-    checkBookmark(event);
-    checkLike(event);
-  });
+watch(searchTerm, (newSearchTerm) => {
+  fetchEvents();
 });
+// Methods
+onMounted(async () => {
+  await fetchEvents();
+});
+
+const fetchEvents = async () => {
+  try {
+    console.log("=====", filters.value);
+    const { onResult, onError, refetch } = useQuery(GetEvents, {
+      limit: 10,
+      offset: 0,
+      order_by: [{ created_at: "desc" }],
+      where: {
+        _and: [
+          {
+            _or: [
+              {
+                title: searchTerm.value
+                  ? { _ilike: `%${searchTerm.value}%` }
+                  : {},
+              },
+              {
+                description: searchTerm.value
+                  ? { _ilike: `%${searchTerm.value}%` }
+                  : {},
+              },
+              // {
+              //   tags: searchTerm.value
+              //     ? {
+              //         _contains: searchTerm.value.split(" "),
+              //       }
+              //     : {},
+              // },
+            ],
+          },
+          ...Object.entries(filters.value).map(([key, value]) => ({
+            [key]: value,
+          })),
+        ],
+      },
+    });
+
+    onResult((result) => {
+      if (result.data) {
+        events.value = result.data.events;
+        result.data.events.forEach((event) => {
+          checkBookmark(event);
+          checkLike(event);
+        });
+      }
+    });
+
+    onError((error) => {
+      console.error("Error fetching events: ", error.message);
+      toast.error("Something went wrong, try again", {
+        transition: toast.TRANSITIONS.FLIP,
+        position: toast.POSITION.TOP_RIGHT,
+      });
+    });
+  } catch (error) {
+    console.error("Error during fetching events: ", error);
+    toast.error("Failed to load events.");
+  }
+};
 
 const checkBookmark = (event) => {
   const { onResult: bookmarkResult } = useQuery(GetEventBookMark, {
     event_id: event.id,
+    user_id: currentUser,
   });
   bookmarkResult((result) => {
-    console.log('++++++++++++YYYYYYYYYYYYYY',result.data.bookmarks)
     const isBookmarked = result.data.bookmarks.some(
       (bookmark) =>
         bookmark.event_id === event.id && bookmark.user_id === currentUser
@@ -256,8 +296,8 @@ const checkBookmark = (event) => {
 const checkLike = (event) => {
   const { onResult: likeResult } = useQuery(GetEventLike, {
     event_id: event.id,
+    user_id: currentUser,
   });
-
   likeResult((result) => {
     const isLiked = result.data.likes.some(
       (like) => like.event_id === event.id && like.user_id === currentUser
@@ -339,16 +379,14 @@ const handleReserveEvent = async () => {
   }
 };
 
-const toggleBookmark = (event) => {
-  event.isBookmarked = !event.isBookmarked;
-};
-
-const toggleFollow = (event) => {
-  event.isFollowed = !event.isFollowed;
-};
-
 const goToEventDetail = (eventId) => {
   router.push(`/event/${eventId}`);
+};
+
+const updateFilters = async (event) => {
+  console.log("............", event);
+  filters.value = event.detail;
+  await fetchEvents();
 };
 
 const handleFormatDistance = (date) => {
@@ -379,6 +417,13 @@ const closeCheckoutModal = () => {
   showCheckout.value = false;
   ticketQuantity.value = 1; // Reset quantity when closing modal
 };
+onMounted(() => {
+  window.addEventListener("apply-filters", updateFilters);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("apply-filters", updateFilters);
+});
 </script>
 <style scoped>
 .fixed {

@@ -15,6 +15,7 @@
       <div v-if="header.name" class="flex-1">
         <h3 class="text-lg font-semibold dark:text-black">{{ header.name }}</h3>
       </div>
+      <!-- Existing header actions -->
       <div v-if="header.actions" class="flex space-x-4">
         <div class="actions">
           <i :class="header.actions[0].icon" 
@@ -24,7 +25,6 @@
              @click="header.actions[1].handler(header)">
           </i>
         </div>
-
       </div>
     </div>
 
@@ -66,7 +66,7 @@
     </div>
 
     <div
-      v-if="footer"
+      v-if="footer || actions"
       :class="['flex items-center justify-between p-4', footerClass]"
     >
       <slot name="footer-left">
@@ -83,9 +83,19 @@
           v-if="footer.postTime"
           :class="footer.postTime.class"
           class="dark:text-gray-500"
-          >{{ footer.postTime.text }}</span
-        >
+        >{{ footer.postTime.text }}</span>
       </slot>
+      <!-- New actions slot -->
+      <div v-if="actions" class="flex space-x-4">
+        <button
+          v-for="(action, index) in actions"
+          :key="index"
+          @click="action.handler"
+          :class="action.class"
+        >
+          {{ action.label }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -151,16 +161,11 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  actions: {
+    type: Array,
+    default: () => [],
+  }
 });
 
 const emits = defineEmits(["header-action", "footer-action"]);
 </script>
-
-<style scoped>
-.truncate {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>

@@ -1,0 +1,5 @@
+mutation CreateCategory($name: String!) {
+  insert_categories(objects: { name: $name }) {
+    affected_rows
+  }
+}

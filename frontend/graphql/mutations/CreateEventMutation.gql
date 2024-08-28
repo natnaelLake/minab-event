@@ -6,11 +6,10 @@ mutation CreateEvent(
   $price: numeric!
   $quantity: Int!
   $preparation_time: interval!
-  $event_date: timestamptz!
   $event_start_time: String!
   $event_end_time: String!
-  $tags: _text!
-  $categories: _text!
+  $tags: String!
+  $categories: String!
   $featured_image_url: String!
   $user_id: uuid!
 ) {
@@ -23,7 +22,6 @@ mutation CreateEvent(
       price: $price
       quantity: $quantity
       preparation_time: $preparation_time
-      event_date: $event_date
       tags: $tags
       categories: $categories
       featured_image_url: $featured_image_url
@@ -43,7 +41,6 @@ mutation CreateEvent(
     user_id
     id
     featured_image_url
-    event_date
     event_start_time
     event_end_time
     description

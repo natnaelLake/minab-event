@@ -80,7 +80,7 @@
           <span
             class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full"
           >
-            {{ eventData.categories.join(", ") }}
+            {{ eventData.categories }}
           </span>
         </div>
       </div>
@@ -138,10 +138,9 @@
                   d="M12 8v4l2 2m-2-2H4M12 16v-4l-2-2m2 2h8"
                 ></path>
               </svg>
-              Date:
+              Event Date:
               {{
                 handleEventDay(
-                  eventData.event_date,
                   eventData.event_start_time,
                   eventData.event_end_time
                 )
@@ -293,7 +292,7 @@
         <h3 class="text-xl font-bold text-gray-800">{{ event.title }}</h3>
         <p class="text-gray-600 mt-2">{{ event.description }}</p>
         <p class="text-gray-500 mt-2">
-          Date: {{ formatDate(event.event_date) }}
+          Date: {{ formatDate(event.event_start_time) }}
         </p>
         <p class="text-gray-800 font-bold mt-2">${{ event.price }}</p>
         <a
@@ -313,7 +312,7 @@ import { useQuery, useMutation } from "@vue/apollo-composable";
 import { useRoute } from "vue-router";
 import GET_EVENT_DETAILS from "~/graphql/query/getEventDetails.gql";
 import GET_LATEST_USER_EVENTS from "~/graphql/query/getLatestUserEvents.gql";
-import { format, formatDistance, parse } from "date-fns";
+import { format, formatDistance, parse, parseISO } from "date-fns";
 import { toast } from "vue3-toastify";
 import FOLLOWS_USER from "~/graphql/mutations/FollowUser.gql";
 import UNFOLLOWS_USER from "~/graphql/mutations/UnfollowUser.gql";
@@ -426,18 +425,26 @@ const toggleDescription = () => {
 };
 
 // Format date
-const handleEventDay = (date, eventTime, eventEndTime) => {
-  const startTimeDate = parse(eventTime, "HH:mm", new Date());
-  const endTimeDate = parse(eventEndTime, "HH:mm", new Date());
-  const formattedStartTime = format(startTimeDate, "hh:mm a");
-  const formattedEndTime = format(endTimeDate, "hh:mm a");
-  const dateTime =
-    format(new Date(date), "MMM do yyyy") +
-    " from " +
+const handleEventDay = (eventStartTime, eventEndTime) => {
+  if (!eventStartTime || !eventEndTime) {
+    console.error("Invalid date value:",eventStartTime, eventEndTime);
+    return "Invalid Date"; // or you can return an empty string or a default date
+  }
+
+  try {
+    const parsedStartDate = parseISO(eventStartTime);
+
+    const parsedEndDate = parseISO(eventEndTime);
+    const formattedStartTime = format(parsedStartDate, 'PPpp');
+    const formattedEndTime = format(parsedEndDate, 'PPpp');
+    return " from " +
     formattedStartTime +
     " - " +
     formattedEndTime;
-  return dateTime;
+  } catch (error) {
+    console.error("Error parsing date:", error);
+    return "Invalid Date"; // Handle the error case gracefully
+  }
 };
 const formatDate = (dateString) => {
   return formatDistance(new Date(dateString), new Date(), {

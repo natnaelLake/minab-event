@@ -30,7 +30,10 @@
         </NuxtLink>
       </div>
       <img
-        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTSKbCFe_QYSVH-4FpaszXvakr2Eti9eAJpQ&s"
+        :src="
+          user && user.profile_image_url ||
+          'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQTSKbCFe_QYSVH-4FpaszXvakr2Eti9eAJpQ&s'
+        "
         alt="Profile Avatar"
         @click="toggleDrawer"
         class="h-10 w-10 rounded-full cursor-pointer border border-gray-300"
@@ -121,7 +124,7 @@ import { getNavigationRoutes } from "@/routes";
 
 const authStore = useAuthStore();
 const router = useRouter();
-
+const user = authStore.user;
 const showModal = ref(false);
 const drawerOpen = ref(false);
 const isAuthenticated = computed(() => authStore.isAuthenticated);

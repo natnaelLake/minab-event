@@ -16,7 +16,6 @@ query GetReservedEvent(
     quantity
     total_price
     event {
-      event_date
       event_end_time
       event_start_time
       featured_image_url

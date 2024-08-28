@@ -43,13 +43,34 @@
                 </td>
                 <td class="p-4">{{ user.email }}</td>
                 <td class="p-4">{{ user.role }}</td>
-                <td class="p-4">active</td>
+                <td class="p-4 truncate w-1/5">
+                  <span
+                    :class="[
+                      user.status === 'Active'
+                        ? 'bg-green-500 text-white px-4 py-2 rounded'
+                        : '',
+                      user.status === 'Blocked'
+                        ? 'bg-red-500 text-white px-4 py-2 rounded'
+                        : '',
+                      'px-2 py-1 rounded text-xs font-semibold',
+                    ]"
+                    >{{ user.status }}</span
+                  >
+                </td>
                 <td class="p-4 space-y-2">
                   <button
+                    v-if="user.status === 'Active'"
                     class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                     @click="suspendUser(user.id)"
                   >
                     Suspend
+                  </button>
+                  <button
+                    v-if="user.status === 'Blocked'"
+                    class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                    @click="activateUser(user.id)"
+                  >
+                    Activate
                   </button>
                   <button
                     v-if="isSuperAdmin && user.role === 'admin'"
@@ -129,11 +150,16 @@
     </div>
   </div>
 </template>
+
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import { useQuery } from "@vue/apollo-composable";
+import { ref, computed, onMounted, watch } from "vue";
+import { useQuery, useMutation } from "@vue/apollo-composable";
 import { useRouter, useRoute } from "vue-router";
 import getAllUsers from "~/graphql/query/getAllUsers.gql";
+import insertAdminMutation from "~/graphql/mutations/insertAdmin.gql";
+import updateAdminMutation from "~/graphql/mutations/updateAdmin.gql";
+import updateUserStatus from "~/graphql/mutations/updateUserStatus.gql";
+
 import { toast } from "vue3-toastify";
 import { useAuthStore } from "~/store";
 
@@ -143,38 +169,17 @@ const authStore = useAuthStore();
 const users = ref([]);
 
 // Reactive State
-onMounted(async () => {
-  await fetchEvents();
+const { onResult, refetch } = useQuery(getAllUsers, {
+  limit: 10,
+  offset: 0,
+  order_by: [{ created_at: "desc" }],
+  where: {},
 });
-
-const fetchEvents = async () => {
-  try {
-    const { onResult, onError } = useQuery(getAllUsers, {
-      limit: 10,
-      offset: 0,
-      order_by: [{ created_at: "desc" }],
-      where: {},
-    });
-
-    onResult((result) => {
-      if (result.data) {
-        console.log("Fetched Users: ", result.data.users);
-        users.value = result.data.users;
-      }
-    });
-
-    onError((error) => {
-      console.error("Error fetching users: ", error.message);
-      toast.error("Something went wrong, try again", {
-        transition: toast.TRANSITIONS.FLIP,
-        position: toast.POSITION.TOP_RIGHT,
-      });
-    });
-  } catch (error) {
-    console.error("Error during fetching users: ", error);
-    toast.error("Failed to load users.");
+onResult((result) => {
+  if (result.data) {
+    users.value = result.data.users;
   }
-};
+});
 
 // Pagination
 const currentPage = ref(1);
@@ -203,7 +208,7 @@ const isSuperAdmin = computed(() => authStore.role === "admin");
 // Modal State and Functions
 const isModalVisible = ref(false);
 const modalAction = ref(""); // "add" or "edit"
-const modalData = ref({ first_name: "", last_name: "", email: "" });
+const modalData = ref({ first_name: "", last_name: "", email: "", id: "" });
 
 const openModal = (action, user = null) => {
   modalAction.value = action;
@@ -220,56 +225,100 @@ const closeModal = () => {
   modalData.value = { first_name: "", last_name: "", email: "" };
 };
 
-const submitModal = () => {
+// Apollo mutations for adding and editing admins
+const { mutate: insertUser } = useMutation(insertAdminMutation);
+const { mutate: updateUser } = useMutation(updateAdminMutation);
+const { mutate: updateUserStatusMutation } = useMutation(updateUserStatus);
+
+const submitModal = async () => {
   if (modalAction.value === "add") {
-    addAdmin();
+    await addAdmin();
   } else if (modalAction.value === "edit") {
-    editAdmin(modalData.value.id);
+    await editAdmin(modalData.value.id);
   }
+  await refetch(); // Refetch users list after mutation
   closeModal();
 };
 
 // Admin management functions
-const addAdmin = () => {
-  console.log(`Adding admin: ${JSON.stringify(modalData.value)}`);
-  // Implementation for adding an admin
+const addAdmin = async () => {
+  const input = {
+    first_name: modalData.value.first_name,
+    last_name: modalData.value.last_name,
+    email: modalData.value.email,
+    role: "admin",
+  };
+  try {
+    await insertUser(input);
+    await refetch();
+    toast.success("Admin added successfully");
+  } catch (error) {
+    console.error("Error adding admin: ", error.message);
+    toast.error("Failed to add admin");
+  }
 };
 
-const editAdmin = (userId) => {
-  console.log(`Editing admin ${userId}`);
-  // Implementation for editing an admin
+const editAdmin = async (id) => {
+  const input = {
+    userId: id,
+    first_name: modalData.value.first_name,
+    last_name: modalData.value.last_name,
+    email: modalData.value.email,
+  };
+  try {
+    await updateUser(input);
+    await refetch();
+    toast.success("Admin updated successfully");
+  } catch (error) {
+    console.error("Error updating admin: ", error.message);
+    toast.error("Failed to update admin");
+  }
 };
 
-// Suspend User Function
-const suspendUser = (userId) => {
-  const user = users.value.find((user) => user.id === userId);
-  if (user) {
-    user.status = "Suspended";
-    toast.success(
-      `User ${user.first_name} ${user.last_name} has been suspended.`
-    );
+// User status management functions
+const suspendUser = async (id) => {
+  try {
+    await updateUserStatusMutation({
+      userId: id,
+      status: "Blocked",
+    });
+    toast.success("User suspended successfully");
+    await refetch();
+  } catch (error) {
+    console.error("Error suspending user: ", error.message);
+    toast.error("Failed to suspend user");
+  }
+};
+
+const activateUser = async (id) => {
+  try {
+    await updateUserStatusMutation({
+      userId: id,
+      status: "Active",
+    });
+    toast.success("User activated successfully");
+    await refetch();
+  } catch (error) {
+    console.error("Error activating user: ", error.message);
+    toast.error("Failed to activate user");
   }
 };
 </script>
 
 <style scoped>
-/* Limit the height of the table body and make it scrollable */
-.overflow-y-auto {
-  max-height: 400px;
+.bg-green-500 {
+  background-color: #48bb78;
 }
 
-/* Ensure the table header stays fixed at the top while scrolling */
-thead.sticky {
-  position: sticky;
-  z-index: 10; /* Lower z-index for sticky table header */
+.hover\:bg-green-600:hover {
+  background-color: #38a169;
 }
 
-/* Modal backdrop to cover everything, including sticky headers */
-.fixed.inset-0 {
-  z-index: 50; /* Higher z-index for modal backdrop */
+.bg-yellow-500 {
+  background-color: #ecc94b;
 }
 
-.bg-white.p-6.rounded-lg.shadow-md {
-  z-index: 60; /* Higher z-index for modal content */
+.hover\:bg-yellow-600:hover {
+  background-color: #d69e2e;
 }
 </style>

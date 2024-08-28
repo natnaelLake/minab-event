@@ -18,12 +18,7 @@
         :description="ticket.event.description"
         :address="ticket.event.venue"
         :price="`Total ${ticket.quantity} tickets by $${ticket.total_price}`"
-        :deadline="
-          formatEventDate(
-            ticket.event.event_date,
-            ticket.event.event_start_time
-          )
-        "
+        :deadline="formatEventDate(ticket.event.event_start_date)"
         :footer="{
           postTime: {
             text: `Purchased : ${handleFormatDistance(ticket.purchased_at)} `,
@@ -42,7 +37,7 @@ import { useQuery } from "@vue/apollo-composable";
 import { useRouter } from "vue-router";
 import { toast } from "vue3-toastify";
 import { useAuthStore } from "~/store";
-import { format, formatDistance } from "date-fns";
+import { format, formatDistance, parseISO } from "date-fns";
 
 const router = useRouter();
 const user = useAuthStore();
@@ -77,8 +72,19 @@ const fetchMyReservedEvents = async () => {
     toast.error("Failed to load events.");
   }
 };
-const formatEventDate = (date, eventTime) => {
-  return format(new Date(date), "'Time: 'MMM do yyyy") + " at " + eventTime;
+const formatEventDate = (date) => {
+  if (!date) {
+    console.error("Invalid date value:", date);
+    return "Invalid Date"; // or you can return an empty string or a default date
+  }
+
+  try {
+    const parsedDate = parseISO(date);
+    return format(parsedDate, "PPpp");
+  } catch (error) {
+    console.error("Error parsing date:", error);
+    return "Invalid Date"; // Handle the error case gracefully
+  }
 };
 const goToEventDetail = (eventId) => {
   router.push(`/event/${eventId}`);

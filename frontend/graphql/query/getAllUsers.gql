@@ -13,5 +13,6 @@ query getAllUsers(
     profile_image_url
     updated_at
     role
+    status
   }
 }

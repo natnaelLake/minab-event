@@ -8,7 +8,6 @@ query GetAllEvents(
     categories
     created_at
     description
-    event_date
     event_start_time
     event_end_time
     featured_image_url
@@ -21,6 +20,7 @@ query GetAllEvents(
     title
     updated_at
     user_id
+    status
     venue
     user {
       created_at

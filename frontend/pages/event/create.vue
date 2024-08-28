@@ -15,14 +15,12 @@
           >
             <div class="flex flex-wrap gap-2">
               <span
-                v-if="selectedCategories.length > 0"
-                v-for="category in selectedCategories"
-                :key="category.value"
+                v-if="selectedCategory"
                 class="bg-green-500 text-white rounded-full px-3 py-1 text-sm flex items-center"
               >
-                {{ category.label }}
+                {{ selectedCategory.name }}
                 <button
-                  @click.stop="removeCategory(category)"
+                  @click.stop="removeCategory"
                   class="ml-2 text-white hover:text-gray-200"
                 >
                   ×
@@ -46,17 +44,17 @@
             <div class="max-h-40 overflow-y-auto">
               <div
                 v-for="option in filteredCategoryOptions"
-                :key="option.value"
+                :key="option.name"
                 class="px-4 py-2 flex items-center cursor-pointer hover:bg-gray-100"
-                @click="toggleCategory(option)"
+                @click="selectCategory(option)"
               >
                 <input
-                  type="checkbox"
-                  :value="option.value"
-                  v-model="selectedCategoryValues"
+                  type="radio"
+                  :value="option.name"
+                  v-model="selectedCategoryValue"
                   class="mr-2"
                 />
-                {{ option.label }}
+                {{ option.name }}
               </div>
             </div>
           </div>
@@ -83,7 +81,7 @@
                 :key="tag.value"
                 class="bg-blue-500 text-white rounded-full px-3 py-1 text-sm flex items-center"
               >
-                {{ tag.label }}
+                {{ tag.name }}
                 <button
                   @click.stop="removeTag(tag)"
                   class="ml-2 text-white hover:text-gray-200"
@@ -109,17 +107,17 @@
             <div class="max-h-40 overflow-y-auto">
               <div
                 v-for="option in filteredTagOptions"
-                :key="option.value"
+                :key="option.name"
                 class="px-4 py-2 flex items-center cursor-pointer hover:bg-gray-100"
                 @click="toggleTag(option)"
               >
                 <input
                   type="checkbox"
-                  :value="option.value"
+                  :value="option.name"
                   v-model="selectedTagValues"
                   class="mr-2"
                 />
-                {{ option.label }}
+                {{ option.name }}
               </div>
             </div>
           </div>
@@ -191,7 +189,7 @@
         <div class="p-4">
           <LocationMap @location-selected="updateLocation" />
         </div>
-        <div class="p-4 border-t flex justify-end">
+        <div class="p-4 border-t flex justify-end mt-20">
           <div class="p-4">
             {{ selectedLocationName }}
           </div>
@@ -219,12 +217,23 @@ import { useMutation } from "@vue/apollo-composable";
 import { toast } from "vue3-toastify";
 import { useRouter } from "vue-router";
 import LocationMap from "@/components/LocationMap.vue";
+import GetAllCategories from "~/graphql/query/GetAllCategories.gql";
+import GetAllTags from "~/graphql/query/GetAllTags.gql";
 
 const authStore = useAuthStore();
 const router = useRouter();
-const { mutate: createEvent, loading: createEventLoading, onDone: onCreateEventDone, onError: onCreateEventError } = useMutation(createEventMutation);
-const { mutate: uploadImages, loading: uploadImageLoading, onDone: onUploadImageDone, onError: onUploadImageError } = useMutation(UploadImageMutation);
-
+const {
+  mutate: createEvent,
+  loading: createEventLoading,
+  onDone: onCreateEventDone,
+  onError: onCreateEventError,
+} = useMutation(createEventMutation);
+const {
+  mutate: uploadImages,
+  loading: uploadImageLoading,
+  onDone: onUploadImageDone,
+  onError: onUploadImageError,
+} = useMutation(UploadImageMutation);
 
 const showModal = ref(false);
 const selectedLocation = ref(null);
@@ -234,8 +243,8 @@ const searchQuery = ref("");
 const selectedTags = ref([]);
 const selectedTagValues = ref([]);
 const dropdownOpen = ref(false);
-const selectedCategories = ref([]);
-const selectedCategoryValues = ref([]);
+const selectedCategory = ref(null);
+const selectedCategoryValue = ref(null);
 const categoryDropdownOpen = ref(false);
 const categorySearchQuery = ref("");
 const tagsError = ref("");
@@ -244,62 +253,77 @@ const locationError = ref("");
 const image = ref(null);
 const profileImage = (ref < File) | (null > null);
 
-const tagOptions = [
-  { value: "tech", label: "Tech" },
-  { value: "music", label: "Music" },
-  { value: "art", label: "Art" },
-  // Add more tags as needed
-];
+const tagOptions = ref([]);
 
-const categoryOptions = [
-  { value: "tech", label: "Tech" },
-  { value: "music", label: "Music" },
-  { value: "art", label: "Art" },
-  // Add more categories as needed
-];
+const categoryOptions = ref([]);
 
+const { onResult: tagResult, refetch: refetchTags } = useQuery(GetAllTags, {
+  limit: 100,
+  offset: 0,
+  order_by: [{ created_at: "desc" }],
+});
+const { onResult: categoryResult, refetch: refetchCategories } = useQuery(
+  GetAllCategories,
+  {
+    limit: 100,
+    offset: 0,
+    order_by: [{ created_at: "desc" }],
+  }
+);
+tagResult((result) => {
+  if (result.data) {
+    tagOptions.value = result.data.tags;
+  }
+});
+console.log("+++++++++++++++++++++++----------", categoryOptions);
+categoryResult((result) => {
+  if (result.data) {
+    categoryOptions.value = result.data.categories;
+  }
+});
+// Computed property for filtering categories
+const filteredCategoryOptions = computed(() => {
+  if (!categoryOptions.value) return [];
+  if (categorySearchQuery.value) {
+    return categoryOptions.value.filter((category) =>
+      category.name
+        .toLowerCase()
+        .includes(categorySearchQuery.value.toLowerCase())
+    );
+  }
+  return categoryOptions.value;
+});
+
+// Method to toggle the category dropdown
 const toggleCategoryDropdown = () => {
   categoryDropdownOpen.value = !categoryDropdownOpen.value;
 };
 
-const toggleCategory = (category) => {
-  const index = selectedCategories.value.findIndex(
-    (c) => c.value === category.value
-  );
-  if (index === -1) {
-    selectedCategories.value.push(category);
-    selectedCategoryValues.value.push(category.value);
-  } else {
-    selectedCategories.value.splice(index, 1);
-    selectedCategoryValues.value.splice(
-      selectedCategoryValues.value.indexOf(category.value),
-      1
-    );
-  }
+// Method to select a category
+const selectCategory = (category) => {
+  selectedCategory.value = category;
+  selectedCategoryValue.value = category.name;
+  categoryDropdownOpen.value = false;
 };
 
-const removeCategory = (category) => {
-  selectedCategories.value = selectedCategories.value.filter(
-    (c) => c.value !== category.value
-  );
-  selectedCategoryValues.value = selectedCategoryValues.value.filter(
-    (v) => v !== category.value
-  );
+// Method to remove a category
+const removeCategory = () => {
+  selectedCategory.value = null;
+  selectedCategoryValue.value = null;
 };
-
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value;
 };
 
 const toggleTag = (tag) => {
-  const index = selectedTags.value.findIndex((t) => t.value === tag.value);
+  const index = selectedTags.value.findIndex((t) => t.value === tag.name);
   if (index === -1) {
     selectedTags.value.push(tag);
-    selectedTagValues.value.push(tag.value);
+    selectedTagValues.value.push(tag.name);
   } else {
     selectedTags.value.splice(index, 1);
     selectedTagValues.value.splice(
-      selectedTagValues.value.indexOf(tag.value),
+      selectedTagValues.value.indexOf(tag.name),
       1
     );
   }
@@ -308,38 +332,37 @@ const toggleTag = (tag) => {
 const removeTag = (tag) => {
   selectedTags.value = selectedTags.value.filter((t) => t.value !== tag.value);
   selectedTagValues.value = selectedTagValues.value.filter(
-    (v) => v !== tag.value
+    (v) => v !== tag.name
   );
 };
 
 const filteredTagOptions = computed(() =>
-  tagOptions.filter((option) =>
-    option.label.toLowerCase().includes(searchQuery.value.toLowerCase())
+  tagOptions.value.filter((option) =>
+    option.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 );
-
-const filteredCategoryOptions = computed(() =>
-  categoryOptions.filter((option) =>
-    option.label.toLowerCase().includes(categorySearchQuery.value.toLowerCase())
-  )
-);
-
 const validateForm = () => {
   locationError.value = selectedLocation.value ? "" : "Location is required";
   tagsError.value =
     selectedTagValues.value.length > 0 ? "" : "At least one tag is required";
-  categoryError.value =
-    selectedCategoryValues.value.length > 0 ? "" : "Category is required";
-
+  if (!selectedCategory.value) {
+    categoryError.value = "Please select a category.";
+    isValid = false;
+  } else {
+    categoryError.value = "";
+  }
   return !(locationError.value || tagsError.value || categoryError.value);
 };
 const onSubmit = async (values) => {
   // Ensure all selected images are assigned and reset any previous errors
   const files = values.featured_image_url;
-  console.log('[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]', files);
-  
+  console.log("[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]", files);
+
   if (!files || files.length === 0) {
-    toast.error("No files selected", { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
+    toast.error("No files selected", {
+      transition: toast.TRANSITIONS.FLIP,
+      position: toast.POSITION.TOP_RIGHT,
+    });
     return;
   }
 
@@ -361,7 +384,9 @@ const onSubmit = async (values) => {
     };
 
     // Convert all files to base64 in parallel
-    const base64Files = await Promise.all(files.map(file => readFilesAsBase64(file)));
+    const base64Files = await Promise.all(
+      files.map((file) => readFilesAsBase64(file))
+    );
 
     // Prepare the input object as per mutation requirement
     const uploadImagesInput = { input: { files: base64Files } };
@@ -379,30 +404,35 @@ const onSubmit = async (values) => {
     const input = {
       title: values.title,
       description: values.description,
-      location: selectedLocation.value ? `${selectedLocation.value[0]},${selectedLocation.value[1]}` : values.location,
+      location: selectedLocation.value
+        ? `${selectedLocation.value[0]},${selectedLocation.value[1]}`
+        : values.location,
       venue: values.venue,
       price: parseFloat(values.price) || 0,
       quantity: parseInt(values.quantity) || 1,
       preparation_time: values.preparation_time,
-      event_date: values.event_date,
       event_start_time: values.event_start_time,
       event_end_time: values.event_end_time,
-      tags: `{${selectedTagValues.value.join(",")}}`, 
-      categories: `{${selectedCategoryValues.value.join(",")}}`, 
-      featured_image_url: `{${uploadedImages.join(",")}}`, 
+      tags: `{${selectedTagValues.value.join(",")}}`,
+      categories: selectedCategoryValue.value,
+      featured_image_url: `{${uploadedImages.join(",")}}`,
       user_id: authStore.user.id,
     };
-
+    console.log(">>>>>>>>>><<<><<<<<<<<<<", input);
     // Use the updated mutation hook
     await createEvent(input);
-    toast.success("Event created successfully!", { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
+    toast.success("Event created successfully!", {
+      transition: toast.TRANSITIONS.FLIP,
+      position: toast.POSITION.TOP_RIGHT,
+    });
     router.push("/");
   } catch (error) {
-    toast.error("Error creating event: " + error.message, { transition: toast.TRANSITIONS.FLIP, position: toast.POSITION.TOP_RIGHT });
+    toast.error("Error creating event: " + error.message, {
+      transition: toast.TRANSITIONS.FLIP,
+      position: toast.POSITION.TOP_RIGHT,
+    });
   }
 };
-
-
 
 // Listen for custom event from LocationMap
 const updateLocation = (event) => {
@@ -454,25 +484,10 @@ const eventSchema = {
     },
     {
       as: "input",
-      name: "event_date",
-      label: "Event Date",
-      placeholder: "Select event date",
-      type: "date",
-      rules: yup.date().required("Event date is required"),
-      class: {
-        wrapper: "mb-5",
-        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
-        input:
-          "w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
-        error: "text-red-500 text-sm mt-1",
-      },
-    },
-    {
-      as: "input",
       name: "event_start_time",
       label: "Event Start Time",
       placeholder: "Select event end time",
-      type: "time",
+      type: "todate",
       rules: yup.string().required("Event start time is required"),
       class: {
         wrapper: "mb-5",

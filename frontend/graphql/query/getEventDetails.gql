@@ -12,7 +12,6 @@ query GetEventDetails($id: uuid!) {
         first_name
       }
     }
-    event_date
     event_start_time
     event_end_time
     featured_image_url

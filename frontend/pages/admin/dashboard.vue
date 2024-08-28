@@ -6,8 +6,8 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <StatCard title="Total Events" :stat="150" />
       <StatCard title="Active Users" :stat="1200" />
-      <StatCard title="Revenue" :stat="$45000" />
-      <StatCard title="New Signups" :stat="34" />
+      <StatCard title="Active Events" :stat="45000" />
+      <StatCard title="Total Users" :stat="34" />
     </div>
 
     <!-- Recent Activities -->

@@ -25,7 +25,7 @@
                 <td class="p-4 truncate w-1/5">{{ event.title }}</td>
                 <td class="p-4 truncate w-1/5">
                   {{
-                    formatEventDate(event.event_date, event.event_start_time)
+                    formatEventDate(event.event_start_time)
                   }}
                 </td>
                 <td class="p-4 truncate w-1/5">
@@ -49,14 +49,14 @@
                 <td class="p-4 truncate w-1/5">
                   <span
                     :class="[
-                      event.status === 'active'
-                        ? 'bg-green-100 text-green-800'
+                      event.status === 'Active'
+                        ? 'bg-green-500 text-white px-4 py-2 rounded'
                         : '',
-                      event.status === 'blocked'
-                        ? 'bg-red-100 text-red-800'
+                      event.status === 'Blocked'
+                        ? 'bg-red-500 text-white px-4 py-2 rounded'
                         : '',
-                      event.status === 'closed'
-                        ? 'bg-gray-200 text-gray-800'
+                      event.status === 'Closed'
+                        ? 'bg-gray-500 text-white px-4 py-2 rounded'
                         : '',
                       'px-2 py-1 rounded text-xs font-semibold',
                     ]"
@@ -65,10 +65,18 @@
                 </td>
                 <td class="p-4 w-1/5">
                   <button
+                    v-if="event.status === 'Active'"
                     class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
                     @click="blockEvent(event.id)"
                   >
                     Block
+                  </button>
+                  <button
+                    v-if="event.status === 'Blocked'"
+                    class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                    @click="activateEvent(event.id)"
+                  >
+                    Activate
                   </button>
                 </td>
               </tr>
@@ -100,51 +108,35 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from "vue";
-import { useQuery } from "@vue/apollo-composable";
-import { useRouter, useRoute } from "vue-router";
+import { ref, computed, onMounted } from "vue";
+import { useQuery, useMutation } from "@vue/apollo-composable";
 import GetEvents from "~/graphql/query/GetEvents.gql";
-import { format } from "date-fns";
+import updateEventStatus from "~/graphql/mutations/updateEventStatus.gql";
+import { format, parseISO } from "date-fns";
 import { toast } from "vue3-toastify";
-import { useAuthStore } from "~/store";
 
-const router = useRouter();
-const route = useRoute();
-const user = useAuthStore();
 const events = ref([]);
 
-// Reactive State
-onMounted(async () => {
-  await fetchEvents();
+const { onResult, onError, refetch } = useQuery(GetEvents, {
+  limit: 10,
+  offset: 0,
+  order_by: [{ created_at: "desc" }],
+  where: {},
 });
 
-const fetchEvents = async () => {
-  try {
-    const { onResult, onError, refetch } = useQuery(GetEvents, {
-      limit: 10,
-      offset: 0,
-      order_by: [{ created_at: "desc" }],
-      where: {},
-    });
-
-    onResult((result) => {
-      if (result.data) {
-        events.value = result.data.events;
-      }
-    });
-
-    onError((error) => {
-      console.error("Error fetching events: ", error.message);
-      toast.error("Something went wrong, try again", {
-        transition: toast.TRANSITIONS.FLIP,
-        position: toast.POSITION.TOP_RIGHT,
-      });
-    });
-  } catch (error) {
-    console.error("Error during fetching events: ", error);
-    toast.error("Failed to load events.");
+onResult((result) => {
+  if (result.data) {
+    events.value = result.data.events;
   }
-};
+});
+
+onError((error) => {
+  console.error("Error fetching events: ", error.message);
+  toast.error("Something went wrong, try again", {
+    transition: toast.TRANSITIONS.FLIP,
+    position: toast.POSITION.TOP_RIGHT,
+  });
+});
 
 // Pagination
 const currentPage = ref(1);
@@ -171,13 +163,50 @@ const prevPage = () => {
   }
 };
 
-// Block Event Function
-const blockEvent = (eventId) => {
-  alert(`Event with ID ${eventId} has been blocked.`);
+// Apollo mutation for updating event status
+const { mutate: updateEventStatusMutation } = useMutation(updateEventStatus);
+
+const blockEvent = async (eventId) => {
+  try {
+    await updateEventStatusMutation({
+      eventId: eventId,
+      status: "Blocked",
+    });
+    toast.success("Event blocked successfully.");
+    await refetch(); // Refetch events list after mutation
+  } catch (error) {
+    console.error("Error updating event status: ", error.message);
+    toast.error("Failed to block event.");
+  }
 };
 
-const formatEventDate = (date, eventTime) => {
-  return format(new Date(date), "'Time: 'MMM do yyyy") + " at " + eventTime;
+const activateEvent = async (eventId) => {
+  try {
+    await updateEventStatusMutation({
+      eventId: eventId,
+      status: "Active",
+    });
+    toast.success("Event activated successfully.");
+    await refetch(); // Refetch events list after mutation
+  } catch (error) {
+    console.error("Error updating event status: ", error.message);
+    toast.error("Failed to activate event.");
+  }
+};
+
+const formatEventDate = (date) => {
+  if (!date) {
+    console.error("Invalid date value:", date);
+    return "Invalid Date"; // or you can return an empty string or a default date
+  }
+
+  try {
+    const parsedDate = parseISO(date);
+    return format(parsedDate, 'PPpp');
+  } catch (error) {
+    console.error("Error parsing date:", error);
+    return "Invalid Date"; // Handle the error case gracefully
+  }
 };
 </script>
 

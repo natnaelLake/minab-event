@@ -13,7 +13,6 @@ query GetMyEvents(
     categories
     created_at
     description
-    event_date
     event_end_time
     event_start_time
     featured_image_url

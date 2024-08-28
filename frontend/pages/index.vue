@@ -55,9 +55,7 @@
             :description="event.description"
             :address="event.venue"
             :price="`$${event.price}`"
-            :deadline="
-              formatEventDate(event.event_date, event.event_start_time)
-            "
+            :deadline="`Deadline ${formatEventDate(event.event_end_time)}`"
             :footer="{
               reserve: {
                 handler: () => showCheckoutModal(event),
@@ -164,7 +162,7 @@ import GetEventLike from "~/graphql/query/GetEventLike.gql";
 import GetEventBookMark from "~/graphql/query/GetEventBookMark.gql";
 import RESERVE_TICKET from "~/graphql/mutations/ReserveTicket.gql";
 import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
-import { formatDistance, format } from "date-fns";
+import { formatDistance, format, parseISO } from "date-fns";
 import { toast } from "vue3-toastify";
 import { useAuthStore } from "~/store";
 
@@ -187,7 +185,11 @@ const tickets = ref([]);
 const bookMarks = ref([]);
 const likes = ref([]);
 const filters = ref({});
-
+const isFetching = ref(false);
+const page = ref(0);
+const hasMoreTokens = ref(true);
+const itemsPerPage = 10;
+const lastElementRef = ref(null);
 const totalPrice = computed(
   () => ticketQuantity.value * (selectedEvent.value?.price || 0)
 );
@@ -218,11 +220,14 @@ onMounted(async () => {
 });
 
 const fetchEvents = async () => {
+  if (isFetching.value || !hasMoreTokens.value) return;
+
+  isFetching.value = true;
   try {
     console.log("=====", filters.value);
     const { onResult, onError, refetch } = useQuery(GetEvents, {
-      limit: 10,
-      offset: 0,
+      limit: itemsPerPage,
+      offset: page.value,
       order_by: [{ created_at: "desc" }],
       where: {
         _and: [
@@ -238,13 +243,16 @@ const fetchEvents = async () => {
                   ? { _ilike: `%${searchTerm.value}%` }
                   : {},
               },
-              // {
-              //   tags: searchTerm.value
-              //     ? {
-              //         _contains: searchTerm.value.split(" "),
-              //       }
-              //     : {},
-              // },
+              {
+                tags: searchTerm.value
+                  ? {
+                      _in: `{${searchTerm.value
+                        .split(" ")
+                        .map((tag) => tag.trim())
+                        .filter((tag) => tag !== "")}}`,
+                    }
+                  : {},
+              },
             ],
           },
           ...Object.entries(filters.value).map(([key, value]) => ({
@@ -256,7 +264,11 @@ const fetchEvents = async () => {
 
     onResult((result) => {
       if (result.data) {
-        events.value = result.data.events;
+        const newEvents = result.data.events;
+        events.value = [...events.value, ...newEvents];
+        hasMoreTokens.value = newEvents.length === itemsPerPage;
+        page.value += 1;
+        // events.value = result.data.events;
         result.data.events.forEach((event) => {
           checkBookmark(event);
           checkLike(event);
@@ -384,7 +396,7 @@ const goToEventDetail = (eventId) => {
 };
 
 const updateFilters = async (event) => {
-  console.log("............", event);
+  console.log("12333333333333333", event);
   filters.value = event.detail;
   await fetchEvents();
 };
@@ -393,10 +405,21 @@ const handleFormatDistance = (date) => {
   return formatDistance(new Date(date), new Date(), { addSuffix: true });
 };
 
-const formatEventDate = (date, eventTime) => {
-  return format(new Date(date), "'Time: 'MMM do yyyy") + " at " + eventTime;
-};
+const formatEventDate = (date) => {
+  console.log("+++++++++++______+++++++", date);
+  if (!date) {
+    console.error("Invalid date value:", date);
+    return "Invalid Date"; // or you can return an empty string or a default date
+  }
 
+  try {
+    const parsedDate = parseISO(date);
+    return format(parsedDate, "PPpp");
+  } catch (error) {
+    console.error("Error parsing date:", error);
+    return "Invalid Date"; // Handle the error case gracefully
+  }
+};
 const showCheckoutModal = (event) => {
   const { onResult: reservedTicketsResult } = useQuery(GetReservedTickets, {
     event_id: event.id,
@@ -417,6 +440,23 @@ const closeCheckoutModal = () => {
   showCheckout.value = false;
   ticketQuantity.value = 1; // Reset quantity when closing modal
 };
+const observer = new IntersectionObserver(([entry]) => {
+  if (entry.isIntersecting) {
+    fetchEvents();
+  }
+}, { threshold: 1.0 });
+
+onMounted(() => {
+  if (lastElementRef.value) {
+    observer.observe(lastElementRef.value);
+  }
+});
+
+onUnmounted(() => {
+  if (lastElementRef.value) {
+    observer.unobserve(lastElementRef.value);
+  }
+});
 onMounted(() => {
   window.addEventListener("apply-filters", updateFilters);
 });

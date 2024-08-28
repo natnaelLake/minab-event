@@ -14,7 +14,7 @@
         :description="event.description"
         :footer="{
           postTime: {
-            text: formatEventDate(event.event_date, event.event_start_time),
+            text: formatEventDate(event.event_start_date),
           },
         }"
         :actions="[
@@ -81,7 +81,7 @@ import { useQuery, useMutation } from "@vue/apollo-composable";
 import { useRouter } from "vue-router";
 import { toast } from "vue3-toastify";
 import { useAuthStore } from "~/store";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 const router = useRouter();
 const user = useAuthStore();
@@ -176,7 +176,18 @@ const goToEventDetail = (eventId) => {
   router.push(`/event/${eventId}`);
 };
 
-const formatEventDate = (date, eventTime) => {
-  return format(new Date(date), "'Time: 'MMM do yyyy") + " at " + eventTime;
+const formatEventDate = (date) => {
+  if (!date) {
+    console.error("Invalid date value:", date);
+    return "Invalid Date"; // or you can return an empty string or a default date
+  }
+
+  try {
+    const parsedDate = parseISO(date);
+    return format(parsedDate, 'PPpp');
+  } catch (error) {
+    console.error("Error parsing date:", error);
+    return "Invalid Date"; // Handle the error case gracefully
+  }
 };
 </script>

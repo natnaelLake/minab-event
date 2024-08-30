@@ -1,0 +1,16 @@
+query GetUserFollowings($follower_id: uuid!) {
+  follows(where: { follower_id: { _eq: $follower_id } }) {
+    created_at
+    event_id
+    follower_id
+    id
+    user {
+      first_name
+      last_name
+      bio
+      profile_image_url
+      email
+      id
+    }
+  }
+}

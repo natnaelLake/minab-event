@@ -1,13 +1,13 @@
 <template>
   <div class="p-6">
     <h1 class="text-3xl font-bold mb-6">Admin Dashboard</h1>
-    
+
     <!-- Stat Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <StatCard title="Total Events" :stat="150" />
-      <StatCard title="Active Users" :stat="1200" />
-      <StatCard title="Active Events" :stat="45000" />
-      <StatCard title="Total Users" :stat="34" />
+      <StatCard title="Total Events" :stat="stats.totalEvents" />
+      <StatCard title="Active Users" :stat="stats.activeUsers" />
+      <StatCard title="Active Events" :stat="stats.activeEvents" />
+      <StatCard title="Total Users" :stat="stats.totalUsers" />
     </div>
 
     <!-- Recent Activities -->
@@ -32,10 +32,37 @@
 </template>
 
 <script setup>
-import StatCard from '~/components/StatCard.vue'
-import RecentEventsTable from '~/components/RecentEventsTable.vue'
-import UserActivityFeed from '~/components/UserActivityFeed.vue'
-import ChartContainer from '~/components/ChartContainer.vue'
-import TaskList from '~/components/TaskList.vue'
-import Announcements from '~/components/Announcements.vue'
+import { ref, onMounted } from "vue";
+import { useQuery } from "@vue/apollo-composable";
+import StatCard from "~/components/StatCard.vue";
+import GetDashboardStats from "~/graphql/query/GetDashboardStats.gql";
+import RecentEventsTable from "~/components/RecentEventsTable.vue";
+import UserActivityFeed from "~/components/UserActivityFeed.vue";
+import ChartContainer from "~/components/ChartContainer.vue";
+import TaskList from "~/components/TaskList.vue";
+import Announcements from "~/components/Announcements.vue";
+const stats = ref({
+  totalEvents: 0,
+  activeUsers: 0,
+  activeEvents: 0,
+  totalUsers: 0,
+});
+
+const { onResult, onError } = useQuery(GetDashboardStats);
+
+onResult((result) => {
+  if (result.data) {
+    console.log("******************ssssssssssssssssss", result.data);
+    stats.value = {
+      totalEvents: result.data.totalEvents.aggregate.count,
+      activeUsers: result.data.activeUsers.aggregate.count,
+      activeEvents: result.data.activeEvents.aggregate.count,
+      totalUsers: result.data.totalUsers.aggregate.count,
+    };
+  }
+});
+
+onError((error) => {
+  console.error("Error fetching dashboard stats:", error.message);
+});
 </script>

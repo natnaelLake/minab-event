@@ -31,4 +31,9 @@ query GetAllEvents(
       profile_image_url
     }
   }
+  events_aggregate(where: $where) {
+    aggregate {
+      count
+    }
+  }
 }

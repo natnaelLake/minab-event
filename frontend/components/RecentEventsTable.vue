@@ -18,15 +18,13 @@
             </thead>
             <tbody>
               <tr
-                v-for="event in paginatedEvents"
+                v-for="event in events"
                 :key="event.id"
                 class="hover:bg-gray-50"
               >
                 <td class="p-4 truncate w-1/5">{{ event.title }}</td>
                 <td class="p-4 truncate w-1/5">
-                  {{
-                    formatEventDate(event.event_start_time)
-                  }}
+                  {{ formatEventDate(event.event_start_time) }}
                 </td>
                 <td class="p-4 truncate w-1/5">
                   <span
@@ -38,7 +36,7 @@
                 <td class="p-4 truncate w-1/5">
                   <div class="flex flex-wrap gap-1">
                     <span
-                      v-for="tag in event.tags"
+                      v-for="tag in parseTags(event.tags)"
                       :key="tag"
                       class="inline-block px-2 py-1 bg-green-200 text-green-800 text-xs font-semibold rounded"
                     >
@@ -108,7 +106,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useQuery, useMutation } from "@vue/apollo-composable";
 import GetEvents from "~/graphql/query/GetEvents.gql";
 import updateEventStatus from "~/graphql/mutations/updateEventStatus.gql";
@@ -116,17 +114,26 @@ import { format, parseISO } from "date-fns";
 import { toast } from "vue3-toastify";
 
 const events = ref([]);
+const itemsPerPage = 5;
+const currentPage = ref(1);
+const totalEvents = ref(0);
+const getOffset = () => (currentPage.value - 1) * itemsPerPage;
 
+// Use Apollo's useQuery to fetch events with pagination
 const { onResult, onError, refetch } = useQuery(GetEvents, {
-  limit: 10,
-  offset: 0,
+  limit: itemsPerPage,
+  offset: getOffset(),
   order_by: [{ created_at: "desc" }],
   where: {},
 });
-
+watch(currentPage, (newPage) => {
+  refetch({ limit: itemsPerPage, offset: getOffset() });
+});
 onResult((result) => {
   if (result.data) {
+    
     events.value = result.data.events;
+    totalEvents.value = result.data.events_aggregate?.aggregate?.count || 0;
   }
 });
 
@@ -138,28 +145,20 @@ onError((error) => {
   });
 });
 
-// Pagination
-const currentPage = ref(1);
-const itemsPerPage = 5;
-
-const totalPages = computed(() =>
-  Math.ceil(events.value.length / itemsPerPage)
-);
-
-const paginatedEvents = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  return events.value.slice(start, start + itemsPerPage);
-});
+// Calculate total pages
+const totalPages = computed(() => Math.ceil(totalEvents.value / itemsPerPage));
 
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value += 1;
+    refetch(); // Refetch data for the next page
   }
 };
 
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value -= 1;
+    refetch(); // Refetch data for the previous page
   }
 };
 
@@ -179,7 +178,9 @@ const blockEvent = async (eventId) => {
     toast.error("Failed to block event.");
   }
 };
-
+const parseTags = (tagsString) => {
+  return tagsString.replace(/{|}/g, "").split(",");
+};
 const activateEvent = async (eventId) => {
   try {
     await updateEventStatusMutation({
@@ -202,7 +203,7 @@ const formatEventDate = (date) => {
 
   try {
     const parsedDate = parseISO(date);
-    return format(parsedDate, 'PPpp');
+    return format(parsedDate, "PPpp");
   } catch (error) {
     console.error("Error parsing date:", error);
     return "Invalid Date"; // Handle the error case gracefully

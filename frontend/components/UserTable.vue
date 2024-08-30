@@ -34,7 +34,7 @@
             </thead>
             <tbody>
               <tr
-                v-for="user in paginatedUsers"
+                v-for="user in users"
                 :key="user.id"
                 class="hover:bg-gray-50"
               >
@@ -167,38 +167,51 @@ const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
 const users = ref([]);
+const itemsPerPage = 5;
+const currentPage = ref(1);
+const totalUsers = ref(0);
+const getOffset = () => (currentPage.value - 1) * itemsPerPage;
 
 // Reactive State
-const { onResult, refetch } = useQuery(getAllUsers, {
-  limit: 10,
-  offset: 0,
+const { onResult, onError,refetch } = useQuery(getAllUsers, {
+  limit: itemsPerPage,
+  offset: getOffset(),
   order_by: [{ created_at: "desc" }],
   where: {},
 });
+watch(currentPage, (newPage) => {
+  refetch({ limit: itemsPerPage, offset: getOffset() });
+});
 onResult((result) => {
   if (result.data) {
+    console.log('=======))))))',result.data.users)
     users.value = result.data.users;
+    totalUsers.value = result.data.users_aggregate?.aggregate?.count || 0;
   }
 });
 
-// Pagination
-const currentPage = ref(1);
-const itemsPerPage = 5;
-const totalPages = computed(() => Math.ceil(users.value.length / itemsPerPage));
-const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage;
-  return users.value.slice(start, start + itemsPerPage);
+onError((error) => {
+  console.error("Error fetching events: ", error.message);
+  toast.error("Something went wrong, try again", {
+    transition: toast.TRANSITIONS.FLIP,
+    position: toast.POSITION.TOP_RIGHT,
+  });
 });
+
+// Calculate total pages
+const totalPages = computed(() => Math.ceil(totalUsers.value / itemsPerPage));
 
 const nextPage = () => {
   if (currentPage.value < totalPages.value) {
     currentPage.value += 1;
+    refetch(); // Refetch data for the next page
   }
 };
 
 const prevPage = () => {
   if (currentPage.value > 1) {
     currentPage.value -= 1;
+    refetch(); // Refetch data for the previous page
   }
 };
 

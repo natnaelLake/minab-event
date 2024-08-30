@@ -12,11 +12,6 @@ import (
 )
 
 func main() {
-	// Get environment variables
-	// adminSecret := os.Getenv("HASURA_GRAPHQL_ADMIN_SECRET")
-	// hasuraEndpoint := os.Getenv("HASURA_GRAPHQL_ENDPOINT")
-	// fmt.Print("======= adminSecret && hasuraEndpoint  ", adminSecret, hasuraEndpoint)
-	// Initialize GraphQL client
 	client := utilService.Client()
 	fmt.Println("GraphQL client initialized:", client)
 

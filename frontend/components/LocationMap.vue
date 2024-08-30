@@ -22,18 +22,19 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import axios from 'axios';
+import { L } from "leaflet";
+import { ref } from "vue";
+import axios from "axios";
 
 const zoom = ref(6);
 const center = ref([9.030651, 38.740494]);
 const selectedLocation = ref(null);
-const locationName = ref('');
-const searchQuery = ref('');
+const locationName = ref("");
+const searchQuery = ref("");
 
 // Emit event with location data
 const emitLocationData = () => {
-  const event = new CustomEvent('location-selected', {
+  const event = new CustomEvent("location-selected", {
     detail: {
       locationName: locationName.value,
       location: selectedLocation.value,
@@ -50,11 +51,11 @@ const onMapClick = (event) => {
 const searchLocation = async () => {
   try {
     const response = await axios.get(
-      'https://nominatim.openstreetmap.org/search',
+      "https://nominatim.openstreetmap.org/search",
       {
         params: {
           q: searchQuery.value,
-          format: 'json',
+          format: "json",
           limit: 1,
         },
       }
@@ -67,22 +68,22 @@ const searchLocation = async () => {
       center.value = [location.lat, location.lon];
       emitLocationData();
     } else {
-      console.error('No results found for the search query');
+      console.error("No results found for the search query");
     }
   } catch (error) {
-    console.error('Failed to search location: ', error);
+    console.error("Failed to search location: ", error);
   }
 };
 
 const fetchPlaceName = async (lat, lon) => {
   try {
     const response = await axios.get(
-      'https://nominatim.openstreetmap.org/reverse',
+      "https://nominatim.openstreetmap.org/reverse",
       {
         params: {
           lat: lat,
           lon: lon,
-          format: 'json',
+          format: "json",
         },
       }
     );
@@ -90,7 +91,7 @@ const fetchPlaceName = async (lat, lon) => {
     locationName.value = response.data.display_name;
     emitLocationData();
   } catch (error) {
-    console.error('Failed to fetch place name: ', error);
+    console.error("Failed to fetch place name: ", error);
   }
 };
 </script>

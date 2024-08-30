@@ -89,7 +89,7 @@
       <p class="p-2">Event Tags</p>
       <div class="mb-6 flex flex-wrap gap-2">
         <span
-          v-for="(tag, index) in eventData.tags"
+          v-for="(tag, index) in eventTags"
           :key="index"
           class="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full"
         >
@@ -330,6 +330,7 @@ const currentUser = user.id;
 const isFollowing = ref(false);
 const isEventReserved = ref(false);
 const images = ref([]);
+const eventTags = ref([]);
 const currentImage = ref("");
 const currentIndex = ref(0);
 const isExpanded = ref(false);
@@ -355,6 +356,7 @@ onResult((result) => {
   images.value = eventData.value.featured_image_url
     .replace(/{|}/g, "")
     .split(",");
+  eventTags.value = eventData.value.tags.replace(/{|}/g, "").split(",");
   currentImage.value = images.value[0] || "";
 });
 
@@ -427,7 +429,7 @@ const toggleDescription = () => {
 // Format date
 const handleEventDay = (eventStartTime, eventEndTime) => {
   if (!eventStartTime || !eventEndTime) {
-    console.error("Invalid date value:",eventStartTime, eventEndTime);
+    console.error("Invalid date value:", eventStartTime, eventEndTime);
     return "Invalid Date"; // or you can return an empty string or a default date
   }
 
@@ -435,12 +437,9 @@ const handleEventDay = (eventStartTime, eventEndTime) => {
     const parsedStartDate = parseISO(eventStartTime);
 
     const parsedEndDate = parseISO(eventEndTime);
-    const formattedStartTime = format(parsedStartDate, 'PPpp');
-    const formattedEndTime = format(parsedEndDate, 'PPpp');
-    return " from " +
-    formattedStartTime +
-    " - " +
-    formattedEndTime;
+    const formattedStartTime = format(parsedStartDate, "PPpp");
+    const formattedEndTime = format(parsedEndDate, "PPpp");
+    return " from " + formattedStartTime + " - " + formattedEndTime;
   } catch (error) {
     console.error("Error parsing date:", error);
     return "Invalid Date"; // Handle the error case gracefully

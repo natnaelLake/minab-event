@@ -69,7 +69,24 @@
             class="dark:bg-white text-black"
           />
         </div>
+
+        <!-- Skeleton Loader -->
       </div>
+      <div
+        v-if="isFetching"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
+        <div
+          v-for="i in itemsPerPage"
+          :key="`skeleton-${i}`"
+          class="overflow-hidden"
+        >
+          <SkeletonLoader />
+        </div>
+      </div>
+
+      <!-- Infinite Scroll -->
+      <div ref="lastElementRef" class="h-10"></div>
     </div>
   </div>
 
@@ -146,31 +163,30 @@
     </div>
   </div>
 </template>
+
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import { useQuery, useMutation } from "@vue/apollo-composable";
-import { useRouter, useRoute } from "vue-router";
 import EventCard from "~/components/EventCard.vue";
 import Filter from "~/components/Filter.vue";
 import GetEvents from "~/graphql/query/GetEvents.gql";
-import GetReservedTickets from "~/graphql/query/GetReservedTickets.gql";
+import RESERVE_TICKET from "~/graphql/mutations/ReserveTicket.gql";
+import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
 import BookMarkEvent from "~/graphql/mutations/BookMarkEvent.gql";
 import LikeEvent from "~/graphql/mutations/LikeEvent.gql";
 import UNBookMarkEvent from "~/graphql/mutations/UNBookMarkEvent.gql";
 import UNLikeEvent from "~/graphql/mutations/UNLikeEvent.gql";
 import GetEventLike from "~/graphql/query/GetEventLike.gql";
 import GetEventBookMark from "~/graphql/query/GetEventBookMark.gql";
-import RESERVE_TICKET from "~/graphql/mutations/ReserveTicket.gql";
-import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
 import { formatDistance, format, parseISO } from "date-fns";
 import { toast } from "vue3-toastify";
 import { useAuthStore } from "~/store";
+import SkeletonLoader from "~/components/SkeletonLoader.vue";
+import { useRouter } from "vue-router";
 
 // Router and Auth Store
-const router = useRouter();
-const route = useRoute();
 const user = useAuthStore();
-
+const router = useRouter();
 // Reactive State
 const events = ref([]);
 const ticketQuantity = ref(1);
@@ -179,8 +195,6 @@ const searchTerm = ref("");
 const showCheckout = ref(false);
 const isEventReserved = ref(false);
 const currentUser = user.id;
-const eventId = route.params.id;
-const eventData = ref(null);
 const tickets = ref([]);
 const bookMarks = ref([]);
 const likes = ref([]);
@@ -188,8 +202,9 @@ const filters = ref({});
 const isFetching = ref(false);
 const page = ref(0);
 const hasMoreTokens = ref(true);
-const itemsPerPage = 10;
+const itemsPerPage = 9;
 const lastElementRef = ref(null);
+
 const totalPrice = computed(
   () => ticketQuantity.value * (selectedEvent.value?.price || 0)
 );
@@ -211,23 +226,27 @@ const { mutate: likeEvent } = useMutation(LikeEvent);
 const { mutate: bookMarkEvent } = useMutation(BookMarkEvent);
 const { mutate: unBookMarkEvent } = useMutation(UNBookMarkEvent);
 
-watch(searchTerm, (newSearchTerm) => {
-  fetchEvents();
-});
-// Methods
-onMounted(async () => {
+watch(searchTerm, async (newSearchTerm) => {
+  resetPagination();
   await fetchEvents();
+});
+
+// Methods
+onMounted(() => {
+  fetchEvents();
+  observeLastElement();
 });
 
 const fetchEvents = async () => {
   if (isFetching.value || !hasMoreTokens.value) return;
 
   isFetching.value = true;
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
   try {
-    console.log("=====", filters.value);
-    const { onResult, onError, refetch } = useQuery(GetEvents, {
+    const { onResult, onError } = useQuery(GetEvents, {
       limit: itemsPerPage,
-      offset: page.value,
+      offset: page.value * itemsPerPage,
       order_by: [{ created_at: "desc" }],
       where: {
         _and: [
@@ -243,16 +262,6 @@ const fetchEvents = async () => {
                   ? { _ilike: `%${searchTerm.value}%` }
                   : {},
               },
-              {
-                tags: searchTerm.value
-                  ? {
-                      _in: `{${searchTerm.value
-                        .split(" ")
-                        .map((tag) => tag.trim())
-                        .filter((tag) => tag !== "")}}`,
-                    }
-                  : {},
-              },
             ],
           },
           ...Object.entries(filters.value).map(([key, value]) => ({
@@ -262,33 +271,53 @@ const fetchEvents = async () => {
       },
     });
 
-    onResult((result) => {
-      if (result.data) {
-        const newEvents = result.data.events;
-        events.value = [...events.value, ...newEvents];
-        hasMoreTokens.value = newEvents.length === itemsPerPage;
-        page.value += 1;
-        // events.value = result.data.events;
-        result.data.events.forEach((event) => {
+    onResult(({ data }) => {
+      if (data.events.length < itemsPerPage) {
+        hasMoreTokens.value = false;
+      }
+      events.value.push(...data.events);
+      if (currentUser) {
+        data.events.forEach((event) => {
           checkBookmark(event);
           checkLike(event);
         });
       }
+      page.value++;
+      isFetching.value = false;
     });
 
     onError((error) => {
-      console.error("Error fetching events: ", error.message);
-      toast.error("Something went wrong, try again", {
-        transition: toast.TRANSITIONS.FLIP,
-        position: toast.POSITION.TOP_RIGHT,
-      });
+      console.error("Error fetching events:", error);
+      isFetching.value = false;
     });
   } catch (error) {
-    console.error("Error during fetching events: ", error);
-    toast.error("Failed to load events.");
+    console.error("Error fetching events:", error);
+    isFetching.value = false;
   }
 };
 
+const observeLastElement = () => {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      if (entries[0].isIntersecting && !isFetching.value) {
+        fetchEvents();
+      }
+    },
+    {
+      rootMargin: "100px",
+    }
+  );
+  if (lastElementRef.value) {
+    observer.observe(lastElementRef.value);
+  }
+};
+
+const resetPagination = () => {
+  events.value = [];
+  page.value = 0;
+  hasMoreTokens.value = true;
+  isFetching.value = false;
+};
 const checkBookmark = (event) => {
   const { onResult: bookmarkResult } = useQuery(GetEventBookMark, {
     event_id: event.id,
@@ -319,144 +348,75 @@ const checkLike = (event) => {
     }
   });
 };
+const handleEventLike = async (event) => {
+  try {
+    const liked = likes.value.includes(event.id);
+    if (liked) {
+      await unLikeEvent({ event_id: event.id, user_id: currentUser });
+      likes.value = likes.value.filter((id) => id !== event.id);
+    } else {
+      await likeEvent({ event_id: event.id, user_id: currentUser });
+      likes.value.push(event.id);
+    }
+  } catch (error) {
+    console.error("Error liking/unliking event:", error);
+  }
+};
 
 const handleEventBookMark = async (event) => {
   try {
-    if (bookMarks.value.includes(event.id)) {
-      await unBookMarkEvent({
-        event_id: event.id,
-        user_id: currentUser,
-      });
+    const bookmarked = bookMarks.value.includes(event.id);
+    if (bookmarked) {
+      await unBookMarkEvent({ event_id: event.id, user_id: currentUser });
       bookMarks.value = bookMarks.value.filter((id) => id !== event.id);
-      toast.success("Event UnBookMarked successfully.");
     } else {
-      await bookMarkEvent({
-        event_id: event.id,
-        user_id: currentUser,
-      });
+      await bookMarkEvent({ event_id: event.id, user_id: currentUser });
       bookMarks.value.push(event.id);
-      toast.success("Event BookMarked successfully.");
     }
   } catch (error) {
-    console.error("Error updating bookmark status:", error);
-    toast.error("Failed to update bookmark status.");
+    console.error("Error bookmarking/unbookmarking event:", error);
   }
 };
 
-const handleEventLike = async (event) => {
-  try {
-    if (likes.value.includes(event.id)) {
-      await unLikeEvent({
-        event_id: event.id,
-        user_id: currentUser,
-      });
-      likes.value = likes.value.filter((id) => id !== event.id);
-      toast.success("Event unLiked successfully.");
-    } else {
-      await likeEvent({
-        event_id: event.id,
-        user_id: currentUser,
-      });
-      likes.value.push(event.id);
-      toast.success("Event Liked successfully.");
-    }
-  } catch (error) {
-    console.error("Error updating like status:", error);
-    toast.error("Failed to update like status.");
-  }
-};
-const handleReserveEvent = async () => {
-  try {
-    if (isEventReserved.value) {
-      await unReserveTicket({
-        event_id: selectedEvent.value.id,
-        user_id: currentUser,
-      });
-      isEventReserved.value = false;
-      toast.success("Event unreserved successfully.");
-    } else {
-      await reserveTicket({
-        event_id: selectedEvent.value.id,
-        user_id: currentUser,
-        quantity: ticketQuantity.value,
-        total_price: totalPrice.value,
-      });
-      isEventReserved.value = true;
-      toast.success("Event reserved successfully.");
-    }
-    closeCheckoutModal();
-  } catch (error) {
-    console.error("Error updating reservation status:", error);
-    toast.error("Failed to update reservation status.");
-  }
-};
+const formatEventDate = (date) => format(parseISO(date), "MMMM do, yyyy");
 
-const goToEventDetail = (eventId) => {
-  router.push(`/event/${eventId}`);
-};
+const handleFormatDistance = (date) =>
+  formatDistance(new Date(date), new Date(), {
+    addSuffix: true,
+  });
 
-const updateFilters = async (event) => {
-  console.log("12333333333333333", event);
-  filters.value = event.detail;
-  await fetchEvents();
-};
-
-const handleFormatDistance = (date) => {
-  return formatDistance(new Date(date), new Date(), { addSuffix: true });
-};
-
-const formatEventDate = (date) => {
-  console.log("+++++++++++______+++++++", date);
-  if (!date) {
-    console.error("Invalid date value:", date);
-    return "Invalid Date"; // or you can return an empty string or a default date
-  }
-
-  try {
-    const parsedDate = parseISO(date);
-    return format(parsedDate, "PPpp");
-  } catch (error) {
-    console.error("Error parsing date:", error);
-    return "Invalid Date"; // Handle the error case gracefully
-  }
-};
 const showCheckoutModal = (event) => {
-  const { onResult: reservedTicketsResult } = useQuery(GetReservedTickets, {
-    event_id: event.id,
-  });
-
-  reservedTicketsResult((result) => {
-    tickets.value = result.data.tickets;
-    isEventReserved.value = result.data.tickets.some(
-      (ticket) => ticket.event_id === event.id
-    );
-  });
-
   selectedEvent.value = event;
   showCheckout.value = true;
 };
 
 const closeCheckoutModal = () => {
   showCheckout.value = false;
-  ticketQuantity.value = 1; // Reset quantity when closing modal
+  ticketQuantity.value = 1;
 };
-const observer = new IntersectionObserver(([entry]) => {
-  if (entry.isIntersecting) {
-    fetchEvents();
-  }
-}, { threshold: 1.0 });
 
-onMounted(() => {
-  if (lastElementRef.value) {
-    observer.observe(lastElementRef.value);
+const handleReserveEvent = async () => {
+  try {
+    await reserveTicket({
+      event_id: selectedEvent.value.id,
+      quantity: ticketQuantity.value,
+    });
+    isEventReserved.value = true;
+    toast.success("Tickets reserved successfully!");
+  } catch (error) {
+    console.error("Error reserving tickets:", error);
   }
-});
+};
+const updateFilters = async (event) => {
+  console.log("12333333333333333", event);
+  filters.value = event.detail;
+  resetPagination();
+  await fetchEvents();
+};
 
-onUnmounted(() => {
-  if (lastElementRef.value) {
-    observer.unobserve(lastElementRef.value);
-  }
-});
+const goToEventDetail = (eventId) => {
+  router.push(`/event/${eventId}`);
+};
 onMounted(() => {
   window.addEventListener("apply-filters", updateFilters);
 });
@@ -465,9 +425,3 @@ onUnmounted(() => {
   window.removeEventListener("apply-filters", updateFilters);
 });
 </script>
-<style scoped>
-.fixed {
-  position: fixed;
-  height: 100%;
-}
-</style>

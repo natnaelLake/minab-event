@@ -101,19 +101,32 @@ const {
   refetch: refetchFollowing,
 } = useQuery(GetUserFollowings, {
   follower_id: currentUser,
-});
+},{
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": user.role,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      });
 const {
   onResult: followersResult,
   onError: followersError,
   refetch: refetchFollowers,
 } = useQuery(GetUserFollowers, {
   user_id: currentUser,
-});
+},{
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": user.role,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      });
 followingResult((result) => {
-  console.log("--------------===========", result.data);
   if (result.data) {
-    console.log("--------------+++++++++++", result.data);
-
     followingCounts.value = result.data.follows.length;
   }
 });
@@ -126,7 +139,15 @@ const fetchEvents = async () => {
   try {
     const { onResult, onError, refetch } = useQuery(getSingleUser, {
       id: currentUser,
-    });
+    },{
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": user.role,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      });
 
     onResult((result) => {
       if (result.data) {

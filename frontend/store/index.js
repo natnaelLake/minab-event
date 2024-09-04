@@ -14,7 +14,7 @@ export const useAuthStore = defineStore("auth", {
 
   getters: {
     isAuthenticated: (state) => !!state.token,
-    isAdmin: (state) => state.role === "admin",
+    isAdmin: (state) => state.role === "user-admin",
     isUser: (state) => state.role === "user", // Adjust according to your roles
   },
 
@@ -28,7 +28,6 @@ export const useAuthStore = defineStore("auth", {
     },
 
     setId(id) {
-      console.log("*******iiiiiii", id);
       this.id = id;
     },
 
@@ -46,7 +45,6 @@ export const useAuthStore = defineStore("auth", {
       });
 
       onResult((result) => {
-        console.log("User fetched:", result);
         if (result.data) {
           this.user = { ...result.data.users_by_pk };
           this.role = this.user.role;
@@ -59,27 +57,12 @@ export const useAuthStore = defineStore("auth", {
     },
 
     autoLogin() {
-      console.log("Token:", this.token);
       if (this.token) {
         try {
           const decoded = jwt_decode(this.token);
-          console.log("Decoded JWT:", decoded);
-
-          // Extracting user ID from claims
-          // Example: Extract user ID if it's in a specific format
-          const userIdClaim =
-            decoded["https://hasura.io/jwt/claims"]["x-hasura-user-id"];
-
-          // If userIdClaim contains additional characters or needs parsing, handle it here
-          // For example, if the real ID is after '=' sign
-
           const userId =
-            userIdClaim.split("=")[1].replace(/\)$/, "") || userIdClaim;
-
-          console.log("User ID:", userId);
-
-          // Validating token expiration
-          if (decoded.exp * 1000 > Date.now()) {
+            decoded["https://hasura.io/jwt/claims"]["x-hasura-user-id"];
+            if (decoded.exp * 1000 > Date.now()) {
             this.setId(userId);
             this.setUser(userId);
           } else {

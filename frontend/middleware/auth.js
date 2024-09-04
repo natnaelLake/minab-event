@@ -8,13 +8,13 @@ export default defineNuxtRouteMiddleware((to, from) => {
   
   // Redirect based on authentication and role
   if (authStore.isAuthenticated) {
-    if (authStore.role === 'admin') {
+    if (authStore.role === 'user-admin') {
       if (to.path === '/') {
-        return navigateTo('/admin/dashboard'); // Redirect admin from '/' to dashboard
+        return navigateTo('/user-admin/dashboard'); // Redirect user-admin from '/' to dashboard
       }
     } else if (authStore.role === 'user') {
-      if (to.path === '/admin/dashboard') {
-        return navigateTo('/'); // Redirect user from admin dashboard to '/'
+      if (to.path === '/user-admin/dashboard') {
+        return navigateTo('/'); // Redirect user from user-admin dashboard to '/'
       }
     }
   }

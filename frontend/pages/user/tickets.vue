@@ -42,6 +42,7 @@ import { format, formatDistance, parseISO } from "date-fns";
 const router = useRouter();
 const user = useAuthStore();
 const currentUser = user.id;
+const currentUserRole = user.role;
 const tickets = ref([]);
 
 onMounted(async () => {
@@ -50,12 +51,24 @@ onMounted(async () => {
 
 const fetchMyReservedEvents = async () => {
   try {
-    const { onResult, onError } = useQuery(GetMyReservedTickets, {
-      limit: 10,
-      offset: 0,
-      order_by: [{ purchased_at: "desc" }],
-      user_id: currentUser,
-    });
+    const { onResult, onError } = useQuery(
+      GetMyReservedTickets,
+      {
+        limit: 10,
+        offset: 0,
+        order_by: [{ purchased_at: "desc" }],
+        user_id: currentUser,
+      },
+      {
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": currentUserRole,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      }
+    );
 
     onResult((result) => {
       if (result.data) {

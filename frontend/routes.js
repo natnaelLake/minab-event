@@ -52,56 +52,56 @@ export const routes = [
   },
   {
     name: "Dashboard",
-    path: "/admin/dashboard",
-    component: () => import("@/pages/admin/dashboard.vue"),
+    path: "/user-admin/dashboard",
+    component: () => import("@/pages/user-admin/dashboard.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ["admin"],
+      allowedRoles: ["user-admin"],
     },
   },
   {
     name: "Event Management",
-    path: "/admin/event-management",
-    component: () => import("@/pages/admin/event-management.vue"),
+    path: "/user-admin/event-management",
+    component: () => import("@/pages/user-admin/event-management.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ["admin"],
+      allowedRoles: ["user-admin"],
     },
   },
   {
     name: "Manage Users",
-    path: "/admin/user-management",
-    component: () => import("@/pages/admin/event-management.vue"),
+    path: "/user-admin/user-management",
+    component: () => import("@/pages/user-admin/event-management.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ["admin"],
+      allowedRoles: ["user-admin"],
     },
   },
   {
     name: "Tasks Management",
-    path: "/admin/TagsCategoriesManagement",
-    component: () => import("@/pages/admin/TagsCategoriesManagement.vue"),
+    path: "/user-admin/TagsCategoriesManagement",
+    component: () => import("@/pages/user-admin/TagsCategoriesManagement.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ["admin"],
+      allowedRoles: ["user-admin"],
     },
   },
   {
     name: "Supports",
-    path: "/admin/supports",
-    component: () => import("@/pages/admin/supports.vue"),
+    path: "/user-admin/supports",
+    component: () => import("@/pages/user-admin/supports.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ["admin"],
+      allowedRoles: ["user-admin"],
     },
   },
   {
     name: "Reports",
-    path: "/admin/reports",
-    component: () => import("@/pages/admin/reports.vue"),
+    path: "/user-admin/reports",
+    component: () => import("@/pages/user-admin/reports.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ["admin"],
+      allowedRoles: ["user-admin"],
     },
   },
   {
@@ -110,7 +110,7 @@ export const routes = [
     component: () => import("@/pages/user/settings.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ["user", "admin"],
+      allowedRoles: ["user", "user-admin"],
     },
   },
   {
@@ -119,7 +119,7 @@ export const routes = [
     component: () => import("@/pages/logout.vue"),
     meta: {
       requiresAuth: true,
-      allowedRoles: ["user", "admin"],
+      allowedRoles: ["user", "user-admin"],
     },
   },
 ];

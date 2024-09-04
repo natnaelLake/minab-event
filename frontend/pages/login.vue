@@ -90,8 +90,8 @@ onDone((result) => {
   authStore.setId(result.data.login.id);
   authStore.setUser(result.data.login.id);
   authStore.setRole(result.data.login.role);
-  if (result.data.login.role === "admin") {
-    navigateTo("/admin/dashboard");
+  if (result.data.login.role === "user-admin") {
+    navigateTo("/user-admin/dashboard");
   } else {
     navigateTo("/");
   }

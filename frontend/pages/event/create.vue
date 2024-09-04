@@ -227,13 +227,30 @@ const {
   loading: createEventLoading,
   onDone: onCreateEventDone,
   onError: onCreateEventError,
-} = useMutation(createEventMutation);
+} = useMutation(createEventMutation, {
+
+  context: {
+    headers: {
+      "x-hasura-user-id": authStore.user.id,
+      "x-hasura-role": authStore.user.role,
+      Authorization: `Bearer ${authStore.token}`,
+    },
+  },
+});
 const {
   mutate: uploadImages,
   loading: uploadImageLoading,
   onDone: onUploadImageDone,
   onError: onUploadImageError,
-} = useMutation(UploadImageMutation);
+} = useMutation(UploadImageMutation, {
+  context: {
+    headers: {
+      "x-hasura-user-id": authStore.user.id,
+      "x-hasura-role": authStore.user.role,
+      Authorization: `Bearer ${authStore.token}`,
+    },
+  },
+});
 
 const showModal = ref(false);
 const selectedLocation = ref(null);
@@ -257,17 +274,38 @@ const tagOptions = ref([]);
 
 const categoryOptions = ref([]);
 
-const { onResult: tagResult, refetch: refetchTags } = useQuery(GetAllTags, {
-  limit: 100,
-  offset: 0,
-  order_by: [{ created_at: "desc" }],
-});
+const { onResult: tagResult, refetch: refetchTags } = useQuery(
+  GetAllTags,
+  {
+    limit: 100,
+    offset: 0,
+    order_by: [{ created_at: "desc" }],
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": authStore.user.id,
+        "x-hasura-role": authStore.user.role,
+        Authorization: `Bearer ${authStore.token}`,
+      },
+    },
+  }
+);
 const { onResult: categoryResult, refetch: refetchCategories } = useQuery(
   GetAllCategories,
   {
     limit: 100,
     offset: 0,
     order_by: [{ created_at: "desc" }],
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": authStore.user.id,
+        "x-hasura-role": authStore.user.role,
+        Authorization: `Bearer ${authStore.token}`,
+      },
+    },
   }
 );
 tagResult((result) => {
@@ -275,7 +313,6 @@ tagResult((result) => {
     tagOptions.value = result.data.tags;
   }
 });
-console.log("+++++++++++++++++++++++----------", categoryOptions);
 categoryResult((result) => {
   if (result.data) {
     categoryOptions.value = result.data.categories;
@@ -356,7 +393,6 @@ const validateForm = () => {
 const onSubmit = async (values) => {
   // Ensure all selected images are assigned and reset any previous errors
   const files = values.featured_image_url;
-  console.log("[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]", files);
 
   if (!files || files.length === 0) {
     toast.error("No files selected", {
@@ -408,7 +444,8 @@ const onSubmit = async (values) => {
         ? `${selectedLocation.value[0]},${selectedLocation.value[1]}`
         : values.location,
       venue: values.venue,
-      price: parseFloat(values.price) || 0,
+      is_free: values.is_free,
+      price: values.is_free ? 0 : parseFloat(values.price) || 0,
       quantity: parseInt(values.quantity) || 1,
       preparation_time: values.preparation_time,
       event_start_time: values.event_start_time,
@@ -416,9 +453,7 @@ const onSubmit = async (values) => {
       tags: `{${selectedTagValues.value.join(",")}}`,
       categories: selectedCategoryValue.value,
       featured_image_url: `{${uploadedImages.join(",")}}`,
-      user_id: authStore.user.id,
     };
-    console.log(">>>>>>>>>><<<><<<<<<<<<<", input);
     // Use the updated mutation hook
     await createEvent(input);
     toast.success("Event created successfully!", {
@@ -451,6 +486,7 @@ const openLocationModal = () => {
 const closeLocationModal = () => {
   showModal.value = false;
 };
+
 const eventSchema = {
   fields: [
     {
@@ -487,7 +523,7 @@ const eventSchema = {
       name: "event_start_time",
       label: "Event Start Time",
       placeholder: "Select event end time",
-      type: "todate",
+      type: "datetime-local",
       rules: yup.string().required("Event start time is required"),
       class: {
         wrapper: "mb-5",
@@ -502,7 +538,7 @@ const eventSchema = {
       name: "event_end_time",
       label: "Event End Time",
       placeholder: "Select event end time",
-      type: "time",
+      type: "datetime-local",
       rules: yup.string().required("Event end time is required"),
       class: {
         wrapper: "mb-5",
@@ -528,15 +564,32 @@ const eventSchema = {
       },
     },
     {
+      as: "checkbox",
+      name: "is_free",
+      label: "Is this event free?",
+      rules: yup.mixed().optional(),
+      class: {
+        wrapper: "mb-5",
+        label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",
+        input:
+          "focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300",
+        error: "text-red-500 text-sm mt-1",
+      },
+    },
+    {
       as: "input",
       name: "price",
       label: "Price",
-      placeholder: "Enter price (or leave blank for free event)",
+      placeholder: "Enter price",
       type: "number",
       rules: yup
         .number()
-        .required("Price is required field")
-        .min(0, "Price cannot be negative"),
+        .min(0, "Price cannot be negative")
+        .when("is_free", {
+          is: true,
+          then: (schema) => schema.notRequired(),
+          otherwise: (schema) => schema.required("Price is required"),
+        }),
       class: {
         wrapper: "mb-5",
         label: "text-sm font-medium text-gray-600 dark:text-gray-400 mb-1",

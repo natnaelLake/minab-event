@@ -33,11 +33,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="user in users"
-                :key="user.id"
-                class="hover:bg-gray-50"
-              >
+              <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50">
                 <td class="p-4">
                   {{ user.first_name + " " + user.last_name }}
                 </td>
@@ -73,7 +69,7 @@
                     Activate
                   </button>
                   <button
-                    v-if="isSuperAdmin && user.role === 'admin'"
+                    v-if="isSuperAdmin && user.role === 'user-admin'"
                     class="bg-yellow-500 text-white px-4 ml-5 py-2 rounded hover:bg-yellow-600"
                     @click="openModal('edit', user)"
                   >
@@ -165,7 +161,10 @@ import { useAuthStore } from "~/store";
 
 const router = useRouter();
 const route = useRoute();
-const authStore = useAuthStore();
+const user = useAuthStore();
+const currentUser = user.id;
+const currentRole = user.role;
+const currentToken = user.token;
 const users = ref([]);
 const itemsPerPage = 5;
 const currentPage = ref(1);
@@ -173,18 +172,30 @@ const totalUsers = ref(0);
 const getOffset = () => (currentPage.value - 1) * itemsPerPage;
 
 // Reactive State
-const { onResult, onError,refetch } = useQuery(getAllUsers, {
-  limit: itemsPerPage,
-  offset: getOffset(),
-  order_by: [{ created_at: "desc" }],
-  where: {},
-});
+const { onResult, onError, refetch } = useQuery(
+  getAllUsers,
+  {
+    limit: itemsPerPage,
+    offset: getOffset(),
+    order_by: [{ created_at: "desc" }],
+    where: {},
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentRole,
+        Authorization: `Bearer ${currentToken}`,
+      },
+    },
+  }
+);
+
 watch(currentPage, (newPage) => {
   refetch({ limit: itemsPerPage, offset: getOffset() });
 });
 onResult((result) => {
   if (result.data) {
-    console.log('=======))))))',result.data.users)
     users.value = result.data.users;
     totalUsers.value = result.data.users_aggregate?.aggregate?.count || 0;
   }
@@ -216,7 +227,7 @@ const prevPage = () => {
 };
 
 // Check if the user is a super admin
-const isSuperAdmin = computed(() => authStore.role === "admin");
+const isSuperAdmin = computed(() => user.role === "user-admin");
 
 // Modal State and Functions
 const isModalVisible = ref(false);
@@ -239,9 +250,33 @@ const closeModal = () => {
 };
 
 // Apollo mutations for adding and editing admins
-const { mutate: insertUser } = useMutation(insertAdminMutation);
-const { mutate: updateUser } = useMutation(updateAdminMutation);
-const { mutate: updateUserStatusMutation } = useMutation(updateUserStatus);
+const { mutate: insertUser } = useMutation(insertAdminMutation, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentRole,
+      Authorization: `Bearer ${currentToken}`,
+    },
+  },
+});
+const { mutate: updateUser } = useMutation(updateAdminMutation, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentRole,
+      Authorization: `Bearer ${currentToken}`,
+    },
+  },
+});
+const { mutate: updateUserStatusMutation } = useMutation(updateUserStatus, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentRole,
+      Authorization: `Bearer ${currentToken}`,
+    },
+  },
+});
 
 const submitModal = async () => {
   if (modalAction.value === "add") {
@@ -259,7 +294,7 @@ const addAdmin = async () => {
     first_name: modalData.value.first_name,
     last_name: modalData.value.last_name,
     email: modalData.value.email,
-    role: "admin",
+    role: "user-admin",
   };
   try {
     await insertUser(input);
@@ -273,13 +308,12 @@ const addAdmin = async () => {
 
 const editAdmin = async (id) => {
   const input = {
-    userId: id,
     first_name: modalData.value.first_name,
     last_name: modalData.value.last_name,
     email: modalData.value.email,
   };
   try {
-    await updateUser(input);
+    await updateUser({ userId: id, changes: input });
     await refetch();
     toast.success("Admin updated successfully");
   } catch (error) {
@@ -292,7 +326,7 @@ const editAdmin = async (id) => {
 const suspendUser = async (id) => {
   try {
     await updateUserStatusMutation({
-      userId: id,
+      id,
       status: "Blocked",
     });
     toast.success("User suspended successfully");
@@ -306,7 +340,7 @@ const suspendUser = async (id) => {
 const activateUser = async (id) => {
   try {
     await updateUserStatusMutation({
-      userId: id,
+      id,
       status: "Active",
     });
     toast.success("User activated successfully");

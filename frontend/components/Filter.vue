@@ -224,8 +224,13 @@ import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import MapComponent from "@/components/LocationMap.vue";
 import GetAllCategories from "~/graphql/query/GetAllCategories.gql";
 import GetAllTags from "~/graphql/query/GetAllTags.gql";
+import { useAuthStore } from "~/store";
 
 // Filter fields
+const user = useAuthStore();
+const currentUser = user.id;
+const currentUserRole = user.role;
+const currentUserToken = user.token;
 const venue = ref("");
 const start_date = ref("");
 const end_date = ref("");
@@ -249,11 +254,14 @@ const tagOptions = ref([]);
 
 const categoryOptions = ref([]);
 
-const { onResult: tagResult, refetch: refetchTags } = useQuery(GetAllTags, {
-  limit: 100,
-  offset: 0,
-  order_by: [{ created_at: "desc" }],
-});
+const { onResult: tagResult, refetch: refetchTags } = useQuery(
+  GetAllTags,
+  {
+    limit: 100,
+    offset: 0,
+    order_by: [{ created_at: "desc" }],
+  }
+);
 const { onResult: categoryResult, refetch: refetchCategories } = useQuery(
   GetAllCategories,
   {
@@ -267,7 +275,6 @@ tagResult((result) => {
     tagOptions.value = result.data.tags;
   }
 });
-console.log("+++++++++++++++++++++++----------", categoryOptions);
 categoryResult((result) => {
   if (result.data) {
     categoryOptions.value = result.data.categories;
@@ -353,19 +360,18 @@ const handleLocationSelected = (event) => {
 
 const emitFilterData = () => {
   const whereClause = generateWhereClause();
-  console.log("Filter whereClause: ", whereClause);
   const event = new CustomEvent("apply-filters", { detail: whereClause });
   window.dispatchEvent(event);
 };
 
 const generateWhereClause = () => {
   const where = {};
-  console.log("mmmmmm", selectedTagValues.value);
-  if (venue.value) {
+ if (venue.value) {
     where.venue = { _ilike: `%${venue.value}%` };
   }
   if (start_date.value || end_date.value) {
     where.event_start_time = {};
+    where.event_end_time = {};
     if (start_date.value) {
       where.event_start_time._gte = start_date.value;
     }

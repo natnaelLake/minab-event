@@ -73,7 +73,15 @@ const fetchMyBookMarkedEvents = async () => {
       offset: 0,
       order_by: [{ created_at: "desc" }],
       user_id: currentUser,
-    });
+    },{
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": user.role,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      });
 
     onResult((result) => {
       if (result.data) {
@@ -115,7 +123,15 @@ const removeBookmark = async (eventId, bookMarkId) => {
   await unBookMarkEvent({
     event_id: eventId,
     user_id: currentUser,
-  });
+  },{
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": user.role,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      });
   bookmarks.value = bookmarks.value.filter(
     (bookmark) => bookmark.id !== bookMarkId
   );

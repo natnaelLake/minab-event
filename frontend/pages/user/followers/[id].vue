@@ -15,20 +15,23 @@
             @click="goToUserProfile(follower.userByFollowerId.id)"
           >
             <img
-              :src="follower.userByFollowerId.profile_image_url || 'https://via.placeholder.com/150'"
+              :src="
+                follower.userByFollowerId.profile_image_url ||
+                'https://via.placeholder.com/150'
+              "
               alt="profile-pic"
               class="w-12 h-12 rounded-full"
             />
             <div class="flex flex-col">
               <span class="font-semibold hover:text-blue-400 hover:underline">
-                {{ follower.userByFollowerId.first_name }} {{ follower.userByFollowerId.last_name }}
+                {{ follower.userByFollowerId.first_name }}
+                {{ follower.userByFollowerId.last_name }}
               </span>
               <span class="text-sm text-gray-500 dark:text-gray-400">
                 {{ follower.userByFollowerId.bio }}
               </span>
             </div>
           </div>
-          
         </li>
       </ul>
     </div>
@@ -46,14 +49,26 @@ const router = useRouter();
 const route = useRoute();
 const followerUsers = ref([]);
 const currentUser = route.params.id;
-
+const user = useAuthStore();
 const goToUserProfile = (userId) => {
   router.push(`/user/profile/${userId}`);
 };
 
-const { onResult: followersResult,refetch } = useQuery(GetUserFollowers, {
-  user_id: currentUser,
-});
+const { onResult: followersResult, refetch } = useQuery(
+  GetUserFollowers,
+  {
+    user_id: currentUser,
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": user.role,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 
 followersResult((result) => {
   if (result.data && result.data.follows) {

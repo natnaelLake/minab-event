@@ -11,7 +11,7 @@ mutation CreateEvent(
   $tags: String!
   $categories: String!
   $featured_image_url: String!
-  $user_id: uuid!
+  $is_free:Boolean!
 ) {
   insert_events_one(
     object: {
@@ -25,9 +25,9 @@ mutation CreateEvent(
       tags: $tags
       categories: $categories
       featured_image_url: $featured_image_url
-      user_id: $user_id
       event_start_time: $event_start_time
       event_end_time: $event_end_time
+      is_free:$is_free
     }
   ) {
     location

@@ -1,13 +1,11 @@
 mutation ReserveTicket(
   $event_id: uuid!
-  $user_id: uuid!
   $quantity: Int!
   $total_price: numeric!
 ) {
   insert_tickets_one(
     object: {
       event_id: $event_id
-      user_id: $user_id
       quantity: $quantity
       total_price: $total_price
     }

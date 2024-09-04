@@ -27,7 +27,9 @@ services:
     environment:
       HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:bewuketu@postgres:5432/MinabEvent
       HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
-      # HASURA_GRAPHQL_ADMIN_SECRET: adminsecretkey
+      HASURA_GRAPHQL_ADMIN_SECRET: "myadminsecretkey"
+      HASURA_GRAPHQL_JWT_SECRET: '{ "type": "HS256", "key": "minab_secret_keyminab_secret_keyminab_secret_keyminab_secret_key" }'      # HASURA_GRAPHQL_ADMIN_SECRET: adminsecretkey
+      HASURA_GRAPHQL_UNAUTHORIZED_ROLE: "anonymous"
     networks:
       - minab_event_network
     depends_on:

@@ -41,18 +41,33 @@ import UserActivityFeed from "~/components/UserActivityFeed.vue";
 import ChartContainer from "~/components/ChartContainer.vue";
 import TaskList from "~/components/TaskList.vue";
 import Announcements from "~/components/Announcements.vue";
+import { useAuthStore } from "~/store";
 const stats = ref({
   totalEvents: 0,
   activeUsers: 0,
   activeEvents: 0,
   totalUsers: 0,
 });
+const user = useAuthStore();
+const currentUserId = user.id;
+const currentUserRole = user.role;
+const currentUserToken = user.token;
 
-const { onResult, onError } = useQuery(GetDashboardStats);
+const { onResult, onError } = useQuery(
+  GetDashboardStats,{},
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUserId,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${currentUserToken}`,
+      },
+    },
+  }
+);
 
 onResult((result) => {
   if (result.data) {
-    console.log("******************ssssssssssssssssss", result.data);
     stats.value = {
       totalEvents: result.data.totalEvents.aggregate.count,
       activeUsers: result.data.activeUsers.aggregate.count,

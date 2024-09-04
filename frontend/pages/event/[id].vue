@@ -322,11 +322,12 @@ import RESERVE_TICKET from "~/graphql/mutations/ReserveTicket.gql";
 import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
 import { useAuthStore } from "~/store";
 const user = useAuthStore();
+const currentUser = user.id;
+const currentUserRole = user.role;
 const route = useRoute();
 const eventId = route.params.id;
 const eventData = ref(null);
 const userId = ref("");
-const currentUser = user.id;
 const isFollowing = ref(false);
 const isEventReserved = ref(false);
 const images = ref([]);
@@ -340,15 +341,59 @@ const tickets = ref([]);
 // const soldTickets = ref(0);
 
 // GraphQL Mutations
-const { mutate: reserveTicket } = useMutation(RESERVE_TICKET);
-const { mutate: unReserveTicket } = useMutation(UNRESERVE_TICKET);
-const { mutate: followUser } = useMutation(FOLLOWS_USER);
-const { mutate: unfollowUser } = useMutation(UNFOLLOWS_USER);
+const { mutate: reserveTicket } = useMutation(RESERVE_TICKET, {},{
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+const { mutate: unReserveTicket } = useMutation(UNRESERVE_TICKET,{}, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+const { mutate: followUser } = useMutation(FOLLOWS_USER,{}, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+const { mutate: unfollowUser } = useMutation(UNFOLLOWS_USER,{}, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
 
 // Fetch event details
-const { onResult, loading, onError } = useQuery(GET_EVENT_DETAILS, {
-  id: eventId,
-});
+const { onResult, loading, onError } = useQuery(
+  GET_EVENT_DETAILS,
+  {
+    id: eventId,
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 
 onResult((result) => {
   eventData.value = result.data.events_by_pk;
@@ -372,7 +417,19 @@ watch(userId, (newUserId) => {
       onResult: onEventsResult,
       loading: loadingEvents,
       onError: onEventsError,
-    } = useQuery(GET_LATEST_USER_EVENTS, { userId: newUserId });
+    } = useQuery(
+      GET_LATEST_USER_EVENTS,
+      { userId: newUserId },
+      {
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": currentUserRole,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      }
+    );
 
     onEventsResult((result) => {
       latestEvents.value = result.data.events.filter(
@@ -392,9 +449,21 @@ const {
   onResult: getFollowersResult,
   loading: getFollowersLoading,
   onError: getFollowersError,
-} = useQuery(EventOwnerFollowers, {
-  followerId: currentUser,
-});
+} = useQuery(
+  EventOwnerFollowers,
+  {
+    followerId: currentUser,
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 
 getFollowersResult((result) => {
   isFollowing.value = result.data.follows.some(
@@ -403,13 +472,24 @@ getFollowersResult((result) => {
 });
 
 // Fetch reserved tickets to check if the event is reserved by the user
-const { onResult: reservedTicketsResult } = useQuery(GetReservedTickets, {
-  event_id: eventId,
-});
+const { onResult: reservedTicketsResult } = useQuery(
+  GetReservedTickets,
+  {
+    event_id: eventId,
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 
 reservedTicketsResult((result) => {
   tickets.value = result.data.tickets;
-  console.log("-----------------++++++++++", tickets.value);
   isEventReserved.value = result.data.tickets.some(
     (ticket) => ticket.event_id === eventId
   );
@@ -456,18 +536,39 @@ const followOwner = async () => {
   try {
     if (isFollowing.value) {
       // Unfollow if currently following
-      await unfollowUser({
-        followerId: currentUser,
-        userId: eventData.value.user.id,
-      });
+      await unfollowUser(
+        {
+          followerId: currentUser,
+          userId: eventData.value.user.id,
+        },
+        {
+          context: {
+            headers: {
+              "x-hasura-user-id": currentUser,
+              "x-hasura-role": currentUserRole,
+              Authorization: `Bearer ${user.token}`,
+            },
+          },
+        }
+      );
       isFollowing.value = false;
       toast.success("Unfollowed successfully.");
     } else {
       // Follow if not currently following
-      await followUser({
-        followerId: currentUser,
-        userId: eventData.value.user.id,
-      });
+      await followUser(
+        {
+          followerId: currentUser,
+        },
+        {
+          context: {
+            headers: {
+              "x-hasura-user-id": currentUser,
+              "x-hasura-role": currentUserRole,
+              Authorization: `Bearer ${user.token}`,
+            },
+          },
+        }
+      );
       isFollowing.value = true;
       toast.success("Followed successfully.");
     }
@@ -489,19 +590,40 @@ const soldTickets = computed(
 const handleReserveEvent = async () => {
   try {
     if (isEventReserved.value) {
-      await unReserveTicket({
-        event_id: eventId,
-        user_id: currentUser,
-      });
+      await unReserveTicket(
+        {
+          event_id: eventId,
+          user_id: currentUser,
+        },
+        {
+          context: {
+            headers: {
+              "x-hasura-user-id": currentUser,
+              "x-hasura-role": currentUserRole,
+              Authorization: `Bearer ${user.token}`,
+            },
+          },
+        }
+      );
       isEventReserved.value = false;
       toast.success("Event unreserved successfully.");
     } else {
-      await reserveTicket({
-        event_id: eventId,
-        user_id: currentUser,
-        quantity: ticketQuantity.value,
-        total_price: totalPrice.value,
-      });
+      await reserveTicket(
+        {
+          event_id: eventId,
+          quantity: ticketQuantity.value,
+          total_price: totalPrice.value,
+        },
+        {
+          context: {
+            headers: {
+              "x-hasura-user-id": currentUser,
+              "x-hasura-role": currentUserRole,
+              Authorization: `Bearer ${user.token}`,
+            },
+          },
+        }
+      );
       isEventReserved.value = true;
       toast.success("Event reserved successfully.");
     }

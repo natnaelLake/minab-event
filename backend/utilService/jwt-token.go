@@ -26,7 +26,7 @@ func GetToken(userId string, role string ) (string, error){
 		"iat": time.Now().Unix(),       // The token issue time (UNIX timestamp)
 		"exp": time.Now().Add(time.Hour * 48).Unix(),  // The token expiration time (UNIX timestamp)
 		"https://hasura.io/jwt/claims": map[string]interface{}{
-			"x-hasura-allowed-roles": []string{"user", "admin"},  // The allowed roles for the user
+			"x-hasura-allowed-roles": []string{"user", "user-admin"},  // The allowed roles for the user
 			"x-hasura-default-role":  "user",            // The default role for the user
 			"x-hasura-user-id":       userId,           // The user ID
 			"x-hasura-role":          role,              // The current role for the user
@@ -36,7 +36,7 @@ func GetToken(userId string, role string ) (string, error){
 		},
 	}
 	tokenExpiration := time.Now().Add(time.Hour * 48).Unix()
-	token, err := createJWTToken(payload, "minab_secret_key",tokenExpiration )
+	token, err := createJWTToken(payload, "minab_secret_keyminab_secret_keyminab_secret_keyminab_secret_key",tokenExpiration )
 	if err != nil {
 		return "", err
 	}

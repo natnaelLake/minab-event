@@ -55,7 +55,16 @@ const router = useRouter();
 const route = useRoute();
 const followingUsers = ref([]);
 const currentUser = route.params.id;
-const { mutate: unfollowUserMutate } = useMutation(UNFOLLOWS_USER);
+const user = useAuthStore();
+const { mutate: unfollowUserMutate } = useMutation(UNFOLLOWS_USER, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": user.role,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
 const goToUserProfile = (userId) => {
   router.push(`/user/profile/${userId}`);
 };
@@ -71,9 +80,21 @@ const unfollowUser = async (userId) => {
   // API call can be made here to unfollow the user on the backend
 };
 
-const { onResult: followingResult, refetch } = useQuery(GetUserFollowings, {
-  follower_id: currentUser,
-});
+const { onResult: followingResult, refetch } = useQuery(
+  GetUserFollowings,
+  {
+    follower_id: currentUser,
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": user.role,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 
 followingResult((result) => {
   if (result.data && result.data.follows) {

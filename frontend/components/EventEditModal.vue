@@ -11,36 +11,40 @@ import DynamicForm from "~/components/DynamicForm.vue";
 import { toast } from "vue3-toastify";
 import { useAuthStore } from "~/store";
 import { useRouter } from "vue-router";
+import GetAllCategories from "~/graphql/query/GetAllCategories.gql";
+import GetAllTags from "~/graphql/query/GetAllTags.gql";
 
 const router = useRouter();
-const authStore = useAuthStore();
+const user = useAuthStore();
 const selectedLocation = ref(null);
 const selectedLocationName = ref(null);
 const locationText = ref("");
+const showLocationModal = ref(false);
+const images = ref([]);
+const currentUser = user.id;
+const currentUserRole = user.role;
+const currentEventId = ref(null);
 const searchQuery = ref("");
 const selectedTags = ref([]);
 const selectedTagValues = ref([]);
 const dropdownOpen = ref(false);
-const selectedCategories = ref([]);
-const selectedCategoryValues = ref([]);
+const selectedCategory = ref(null);
+const selectedCategoryValue = ref("");
 const categoryDropdownOpen = ref(false);
 const categorySearchQuery = ref("");
 const tagsError = ref("");
 const categoryError = ref("");
 const locationError = ref("");
-const image = ref(null);
-const showLocationModal = ref(false);
-const images = ref([]);
-const currentEventId = ref(null);
+const tagOptions = ref([]);
+const categoryOptions = ref([]);
 const props = defineProps({
   show: Boolean,
   event: Object,
   mode: {
     type: String,
-    default: "update", // 'update' or 'delete'
+    default: "update",
   },
 });
-
 const emit = defineEmits(["close", "update", "delete"]);
 
 const isDeleteMode = computed(() => props.mode === "delete");
@@ -60,20 +64,43 @@ const formData = ref({
   featured_image_url: "",
 });
 
-const { mutate: updateEvent } = useMutation(UpdateEvent);
-const { mutate: deleteEvent } = useMutation(DeleteEvent);
+const { mutate: updateEvent } = useMutation(UpdateEvent, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+const { mutate: deleteEvent } = useMutation(DeleteEvent, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
 const {
   mutate: uploadImages,
   loading: uploadImageLoading,
   onDone: onUploadImageDone,
   onError: onUploadImageError,
-} = useMutation(UploadImageMutation);
+} = useMutation(UploadImageMutation,{
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  });
 
 watch(
   () => props.event,
   (newEvent) => {
     if (newEvent) {
-      console.log("************** uuuuuuuuu", newEvent);
       currentEventId.value = newEvent.id;
       // Update form data with event values
       formData.value = {
@@ -96,7 +123,6 @@ watch(
           .split(",")
           .map((url) => url.trim());
       }
-      console.log("..........", images.value);
       if (newEvent.location) {
         const locationArr = newEvent.location.split(",");
         selectedLocation.value = [
@@ -106,78 +132,104 @@ watch(
         locationText.value = `Lat: ${selectedLocation.value[0]}, Lng: ${selectedLocation.value[1]}`;
       }
       if (newEvent.tags) {
-        selectedTags.value = newEvent.tags.map((tag) => ({
-          value: tag,
-          label: tag,
-        }));
-        selectedTagValues.value = newEvent.tags;
+        selectedTags.value = newEvent.tags
+          .replace(/[{}]/g, "")
+          .split(",")
+          .map((tag) => ({
+            value: tag.trim(),
+            name: tag.trim(),
+          }));
+        selectedTagValues.value = newEvent.tags.replace(/[{}]/g, "").split(",");
       }
       if (newEvent.categories) {
-        selectedCategories.value = newEvent.categories.map((category) => ({
-          value: category,
-          label: category,
-        }));
-        selectedCategoryValues.value = newEvent.categories;
+        selectedCategoryValue.value = newEvent.categories;
       }
     }
   },
   { immediate: true }
 );
+const { onResult: tagResult, refetch: refetchTags } = useQuery(GetAllTags, {
+  limit: 100,
+  offset: 0,
+  order_by: [{ created_at: "desc" }],
+},{
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  });
+const { onResult: categoryResult, refetch: refetchCategories } = useQuery(
+  GetAllCategories,
+  {
+    limit: 100,
+    offset: 0,
+    order_by: [{ created_at: "desc" }],
+  },{
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
+tagResult((result) => {
+  if (result.data) {
+    tagOptions.value = result.data.tags;
+  }
+});
+categoryResult((result) => {
+  if (result.data) {
+    categoryOptions.value = result.data.categories;
+  }
+});
+// Computed property for filtering categories
+const filteredCategoryOptions = computed(() => {
+  if (!categoryOptions.value) return [];
+  if (categorySearchQuery.value) {
+    return categoryOptions.value.filter((category) =>
+      category.name
+        .toLowerCase()
+        .includes(categorySearchQuery.value.toLowerCase())
+    );
+  }
+  return categoryOptions.value;
+});
 
-const tagOptions = [
-  { value: "tech", label: "Tech" },
-  { value: "music", label: "Music" },
-  { value: "art", label: "Art" },
-];
-
-const categoryOptions = [
-  { value: "tech", label: "Tech" },
-  { value: "music", label: "Music" },
-  { value: "art", label: "Art" },
-];
-
+// Method to toggle the category dropdown
 const toggleCategoryDropdown = () => {
   categoryDropdownOpen.value = !categoryDropdownOpen.value;
 };
 
-const toggleCategory = (category) => {
-  const index = selectedCategories.value.findIndex(
-    (c) => c.value === category.value
-  );
-  if (index === -1) {
-    selectedCategories.value.push(category);
-    selectedCategoryValues.value.push(category.value);
-  } else {
-    selectedCategories.value.splice(index, 1);
-    selectedCategoryValues.value.splice(
-      selectedCategoryValues.value.indexOf(category.value),
-      1
-    );
-  }
+// Method to select a category
+const selectCategory = (category) => {
+  selectedCategory.value = category;
+  selectedCategoryValue.value = category.name;
+  categoryDropdownOpen.value = false;
 };
 
-const removeCategory = (category) => {
-  selectedCategories.value = selectedCategories.value.filter(
-    (c) => c.value !== category.value
-  );
-  selectedCategoryValues.value = selectedCategoryValues.value.filter(
-    (v) => v !== category.value
-  );
+// Method to remove a category
+const removeCategory = () => {
+  selectedCategory.value = null;
+  selectedCategoryValue.value = null;
 };
-
 const toggleDropdown = () => {
   dropdownOpen.value = !dropdownOpen.value;
 };
 
 const toggleTag = (tag) => {
-  const index = selectedTags.value.findIndex((t) => t.value === tag.value);
+  const index = selectedTags.value.findIndex((t) => t.value === tag.name);
   if (index === -1) {
     selectedTags.value.push(tag);
-    selectedTagValues.value.push(tag.value);
+    selectedTagValues.value.push(tag.name);
   } else {
     selectedTags.value.splice(index, 1);
     selectedTagValues.value.splice(
-      selectedTagValues.value.indexOf(tag.value),
+      selectedTagValues.value.indexOf(tag.name),
       1
     );
   }
@@ -186,19 +238,13 @@ const toggleTag = (tag) => {
 const removeTag = (tag) => {
   selectedTags.value = selectedTags.value.filter((t) => t.value !== tag.value);
   selectedTagValues.value = selectedTagValues.value.filter(
-    (v) => v !== tag.value
+    (v) => v !== tag.name
   );
 };
 
 const filteredTagOptions = computed(() =>
-  tagOptions.filter((option) =>
-    option.label.toLowerCase().includes(searchQuery.value.toLowerCase())
-  )
-);
-
-const filteredCategoryOptions = computed(() =>
-  categoryOptions.filter((option) =>
-    option.label.toLowerCase().includes(categorySearchQuery.value.toLowerCase())
+  tagOptions.value.filter((option) =>
+    option.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   )
 );
 const updateLocation = (event) => {
@@ -207,7 +253,6 @@ const updateLocation = (event) => {
   selectedLocation.value = location;
   selectedLocationName.value = locationName;
   locationText.value = `Lat: ${location[0]}, Lng: ${location[1]}`;
-  // closeLocationModal();
 };
 const closeModal = () => emit("close");
 const openLocationModal = () => {
@@ -222,14 +267,13 @@ const validateForm = () => {
   tagsError.value =
     selectedTagValues.value.length > 0 ? "" : "At least one tag is required";
   categoryError.value =
-    selectedCategoryValues.value.length > 0 ? "" : "Category is required";
+    selectedCategoryValue.value.length > 0 ? "" : "Category is required";
 
   return !(locationError.value || tagsError.value || categoryError.value);
 };
 const removeImage = async (imageUrl) => {
   try {
     images.value = images.value.filter((img) => img !== imageUrl);
-    console.log("99999999999999", images.value, imageUrl);
   } catch (error) {
     console.error("Error deleting image:", error);
     toast.error("Failed to delete image", {
@@ -293,14 +337,8 @@ const onSubmit = async (values) => {
       ...existingImages.filter((img) => !removedImages.includes(img)),
       ...uploadedImages,
     ];
-    console.log(
-      "...............00000000000",
-      finalImageUrls,
-      existingImages,
-      newFiles
-    );
+
     const input = {
-      id: formData.value.id,
       title: values.title,
       description: values.description,
       location: selectedLocation.value
@@ -313,9 +351,8 @@ const onSubmit = async (values) => {
       event_start_time: values.event_start_time,
       event_end_time: values.event_end_time,
       tags: `{${selectedTagValues.value.join(",")}}`,
-      categories: `{${selectedCategoryValues.value.join(",")}}`,
+      categories: selectedCategoryValue.value,
       featured_image_url: `{${finalImageUrls.join(",")}}`,
-      user_id: authStore.user.id,
     };
 
     await updateEvent({ id: String(currentEventId.value), changes: input });
@@ -589,14 +626,12 @@ onUnmounted(() => {
                 >
                   <div class="flex flex-wrap gap-2">
                     <span
-                      v-if="selectedCategories.length > 0"
-                      v-for="category in selectedCategories"
-                      :key="category.value"
+                      v-if="selectedCategory"
                       class="bg-green-500 text-white rounded-full px-3 py-1 text-sm flex items-center"
                     >
-                      {{ category.label }}
+                      {{ selectedCategory.name }}
                       <button
-                        @click.stop="removeCategory(category)"
+                        @click.stop="removeCategory"
                         class="ml-2 text-white hover:text-gray-200"
                       >
                         ×
@@ -620,17 +655,17 @@ onUnmounted(() => {
                   <div class="max-h-40 overflow-y-auto">
                     <div
                       v-for="option in filteredCategoryOptions"
-                      :key="option.value"
+                      :key="option.name"
                       class="px-4 py-2 flex items-center cursor-pointer hover:bg-gray-100"
-                      @click="toggleCategory(option)"
+                      @click="selectCategory(option)"
                     >
                       <input
-                        type="checkbox"
-                        :value="option.value"
-                        v-model="selectedCategoryValues"
+                        type="radio"
+                        :value="option.name"
+                        v-model="selectedCategoryValue"
                         class="mr-2"
                       />
-                      {{ option.label }}
+                      {{ selectedCategoryValue }}
                     </div>
                   </div>
                 </div>
@@ -658,7 +693,7 @@ onUnmounted(() => {
                       :key="tag.value"
                       class="bg-blue-500 text-white rounded-full px-3 py-1 text-sm flex items-center"
                     >
-                      {{ tag.label }}
+                      {{ tag.name }}
                       <button
                         @click.stop="removeTag(tag)"
                         class="ml-2 text-white hover:text-gray-200"
@@ -684,17 +719,17 @@ onUnmounted(() => {
                   <div class="max-h-40 overflow-y-auto">
                     <div
                       v-for="option in filteredTagOptions"
-                      :key="option.value"
+                      :key="option.name"
                       class="px-4 py-2 flex items-center cursor-pointer hover:bg-gray-100"
                       @click="toggleTag(option)"
                     >
                       <input
                         type="checkbox"
-                        :value="option.value"
+                        :value="option.name"
                         v-model="selectedTagValues"
                         class="mr-2"
                       />
-                      {{ option.label }}
+                      {{ option.name }}
                     </div>
                   </div>
                 </div>

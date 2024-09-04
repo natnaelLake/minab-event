@@ -14,7 +14,7 @@
         :description="event.description"
         :footer="{
           postTime: {
-            text: formatEventDate(event.event_start_date),
+            text: formatEventDate(event.event_start_time),
           },
         }"
         :actions="[

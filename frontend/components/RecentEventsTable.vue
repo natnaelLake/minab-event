@@ -112,26 +112,41 @@ import GetEvents from "~/graphql/query/GetEvents.gql";
 import updateEventStatus from "~/graphql/mutations/updateEventStatus.gql";
 import { format, parseISO } from "date-fns";
 import { toast } from "vue3-toastify";
+import { useAuthStore } from "~/store";
 
 const events = ref([]);
 const itemsPerPage = 5;
 const currentPage = ref(1);
 const totalEvents = ref(0);
+const user = useAuthStore();
+const currentUserId = user.id;
+const currentUserRole = user.role;
+const currentUserToken = user.token;
 const getOffset = () => (currentPage.value - 1) * itemsPerPage;
-
 // Use Apollo's useQuery to fetch events with pagination
-const { onResult, onError, refetch } = useQuery(GetEvents, {
-  limit: itemsPerPage,
-  offset: getOffset(),
-  order_by: [{ created_at: "desc" }],
-  where: {},
-});
+const { onResult, onError, refetch } = useQuery(
+  GetEvents,
+  {
+    limit: itemsPerPage,
+    offset: getOffset(),
+    order_by: [{ created_at: "desc" }],
+    where: {},
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUserId,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${currentUserToken}`,
+      },
+    },
+  }
+);
 watch(currentPage, (newPage) => {
   refetch({ limit: itemsPerPage, offset: getOffset() });
 });
 onResult((result) => {
   if (result.data) {
-    
     events.value = result.data.events;
     totalEvents.value = result.data.events_aggregate?.aggregate?.count || 0;
   }
@@ -163,14 +178,22 @@ const prevPage = () => {
 };
 
 // Apollo mutation for updating event status
-const { mutate: updateEventStatusMutation } = useMutation(updateEventStatus);
+const { mutate: updateEventStatusMutation } = useMutation(
+  updateEventStatus,
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUserId,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${currentUserToken}`,
+      },
+    },
+  }
+);
 
-const blockEvent = async (eventId) => {
+const blockEvent = async (id) => {
   try {
-    await updateEventStatusMutation({
-      eventId: eventId,
-      status: "Blocked",
-    });
+    await updateEventStatusMutation({ id, status: "Blocked" });
     toast.success("Event blocked successfully.");
     await refetch(); // Refetch events list after mutation
   } catch (error) {
@@ -181,10 +204,10 @@ const blockEvent = async (eventId) => {
 const parseTags = (tagsString) => {
   return tagsString.replace(/{|}/g, "").split(",");
 };
-const activateEvent = async (eventId) => {
+const activateEvent = async (id) => {
   try {
     await updateEventStatusMutation({
-      eventId: eventId,
+      id,
       status: "Active",
     });
     toast.success("Event activated successfully.");

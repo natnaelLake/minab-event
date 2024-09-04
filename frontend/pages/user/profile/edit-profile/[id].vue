@@ -106,16 +106,36 @@ const {
   loading: uploadImageLoading,
   onDone: onUploadImageDone,
   onError: onUploadImageError,
-} = useMutation(UploadImageMutation);
+} = useMutation(UploadImageMutation, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": user.role,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
 onMounted(async () => {
   await fetchUser();
 });
 
 const fetchUser = async () => {
   try {
-    const { onResult } = useQuery(getSingleUser, {
-      id: currentUser,
-    });
+    const { onResult } = useQuery(
+      getSingleUser,
+      {
+        id: currentUser,
+      },
+      {
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": user.role,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      }
+    );
 
     onResult((result) => {
       if (result.data) {
@@ -173,7 +193,15 @@ const triggerAvatarUpload = () => {
   avatarInput.click();
 };
 
-const { mutate: updateSingleUser } = useMutation(UpdateSingleUser);
+const { mutate: updateSingleUser } = useMutation(UpdateSingleUser, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": user.role,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
 
 const updateProfile = async () => {
   try {

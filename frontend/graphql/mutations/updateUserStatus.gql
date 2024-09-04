@@ -1,5 +1,5 @@
-mutation UpdateUserStatus($userId: uuid!, $status: String!) {
-  update_users_by_pk(pk_columns: { id: $userId }, _set: { status: $status }) {
+mutation UpdateUserStatus($id: uuid!, $status: String!) {
+  update_users_by_pk(pk_columns: { id: $id }, _set: { status: $status }) {
     id
     status
   }

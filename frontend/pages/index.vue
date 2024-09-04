@@ -171,6 +171,7 @@ import EventCard from "~/components/EventCard.vue";
 import Filter from "~/components/Filter.vue";
 import GetEvents from "~/graphql/query/GetEvents.gql";
 import RESERVE_TICKET from "~/graphql/mutations/ReserveTicket.gql";
+import GetReservedTickets from "~/graphql/query/GetReservedTickets.gql";
 import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
 import BookMarkEvent from "~/graphql/mutations/BookMarkEvent.gql";
 import LikeEvent from "~/graphql/mutations/LikeEvent.gql";
@@ -186,6 +187,8 @@ import { useRouter } from "vue-router";
 
 // Router and Auth Store
 const user = useAuthStore();
+const currentUser = user.id;
+const currentUserRole = user.role;
 const router = useRouter();
 // Reactive State
 const events = ref([]);
@@ -194,7 +197,6 @@ const selectedEvent = ref(null);
 const searchTerm = ref("");
 const showCheckout = ref(false);
 const isEventReserved = ref(false);
-const currentUser = user.id;
 const tickets = ref([]);
 const bookMarks = ref([]);
 const likes = ref([]);
@@ -219,12 +221,65 @@ const soldTickets = computed(() =>
     : 0
 );
 
-const { mutate: reserveTicket } = useMutation(RESERVE_TICKET);
-const { mutate: unReserveTicket } = useMutation(UNRESERVE_TICKET);
-const { mutate: unLikeEvent } = useMutation(UNLikeEvent);
-const { mutate: likeEvent } = useMutation(LikeEvent);
-const { mutate: bookMarkEvent } = useMutation(BookMarkEvent);
-const { mutate: unBookMarkEvent } = useMutation(UNBookMarkEvent);
+const { mutate: reserveTicket } = useMutation(RESERVE_TICKET, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+
+const { mutate: unReserveTicket } = useMutation(UNRESERVE_TICKET, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+
+const { mutate: unLikeEvent } = useMutation(UNLikeEvent, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+
+const { mutate: likeEvent } = useMutation(LikeEvent, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+
+const { mutate: bookMarkEvent } = useMutation(BookMarkEvent, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+
+const { mutate: unBookMarkEvent } = useMutation(UNBookMarkEvent, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
 
 watch(searchTerm, async (newSearchTerm) => {
   resetPagination();
@@ -262,6 +317,16 @@ const fetchEvents = async () => {
                   ? { _ilike: `%${searchTerm.value}%` }
                   : {},
               },
+              {
+                tags: searchTerm.value
+                  ? {
+                      _in: `{${searchTerm.value
+                        .split(" ")
+                        .map((tag) => tag.trim())
+                        .filter((tag) => tag !== "")}}`,
+                    }
+                  : {},
+              },
             ],
           },
           ...Object.entries(filters.value).map(([key, value]) => ({
@@ -272,7 +337,7 @@ const fetchEvents = async () => {
     });
 
     onResult(({ data }) => {
-      if (data.events.length < itemsPerPage) {
+      if (data.events && data.events.length < itemsPerPage) {
         hasMoreTokens.value = false;
       }
       events.value.push(...data.events);
@@ -319,32 +384,60 @@ const resetPagination = () => {
   isFetching.value = false;
 };
 const checkBookmark = (event) => {
-  const { onResult: bookmarkResult } = useQuery(GetEventBookMark, {
-    event_id: event.id,
-    user_id: currentUser,
-  });
+  const { onResult: bookmarkResult } = useQuery(
+    GetEventBookMark,
+    {
+      event_id: event.id,
+      user_id: currentUser,
+    },
+    {
+      context: {
+        headers: {
+          "x-hasura-user-id": currentUser,
+          "x-hasura-role": currentUserRole,
+          Authorization: `Bearer ${user.token}`,
+        },
+      },
+    }
+  );
   bookmarkResult((result) => {
-    const isBookmarked = result.data.bookmarks.some(
-      (bookmark) =>
-        bookmark.event_id === event.id && bookmark.user_id === currentUser
-    );
-    if (isBookmarked) {
-      bookMarks.value.push(event.id);
+    if (result.data) {
+      const isBookmarked = result.data.bookmarks.some(
+        (bookmark) =>
+          bookmark.event_id === event.id && bookmark.user_id === currentUser
+      );
+      if (isBookmarked) {
+        bookMarks.value.push(event.id);
+      }
     }
   });
 };
 
 const checkLike = (event) => {
-  const { onResult: likeResult } = useQuery(GetEventLike, {
-    event_id: event.id,
-    user_id: currentUser,
-  });
+  const { onResult: likeResult } = useQuery(
+    GetEventLike,
+    {
+      event_id: event.id,
+      user_id: currentUser,
+    },
+    {
+      context: {
+        headers: {
+          "x-hasura-user-id": currentUser,
+          "x-hasura-role": currentUserRole,
+          Authorization: `Bearer ${user.token}`,
+        },
+      },
+    }
+  );
   likeResult((result) => {
-    const isLiked = result.data.likes.some(
-      (like) => like.event_id === event.id && like.user_id === currentUser
-    );
-    if (isLiked) {
-      likes.value.push(event.id);
+    if (result.data) {
+      const isLiked = result.data.likes.some(
+        (like) => like.event_id === event.id && like.user_id === currentUser
+      );
+      if (isLiked) {
+        likes.value.push(event.id);
+      }
     }
   });
 };
@@ -355,7 +448,7 @@ const handleEventLike = async (event) => {
       await unLikeEvent({ event_id: event.id, user_id: currentUser });
       likes.value = likes.value.filter((id) => id !== event.id);
     } else {
-      await likeEvent({ event_id: event.id, user_id: currentUser });
+      await likeEvent({ event_id: event.id });
       likes.value.push(event.id);
     }
   } catch (error) {
@@ -370,7 +463,7 @@ const handleEventBookMark = async (event) => {
       await unBookMarkEvent({ event_id: event.id, user_id: currentUser });
       bookMarks.value = bookMarks.value.filter((id) => id !== event.id);
     } else {
-      await bookMarkEvent({ event_id: event.id, user_id: currentUser });
+      await bookMarkEvent({ event_id: event.id });
       bookMarks.value.push(event.id);
     }
   } catch (error) {
@@ -386,6 +479,29 @@ const handleFormatDistance = (date) =>
   });
 
 const showCheckoutModal = (event) => {
+  const { onResult: reservedTicketsResult } = useQuery(
+    GetReservedTickets,
+    {
+      event_id: event.id,
+    },
+    {
+      context: {
+        headers: {
+          "x-hasura-user-id": currentUser,
+          "x-hasura-role": currentUserRole,
+          Authorization: `Bearer ${user.token}`,
+        },
+      },
+    }
+  );
+
+  reservedTicketsResult((result) => {
+    tickets.value = result.data.tickets;
+    isEventReserved.value = result.data.tickets.some(
+      (ticket) => ticket.event_id === event.id
+    );
+  });
+
   selectedEvent.value = event;
   showCheckout.value = true;
 };
@@ -397,25 +513,39 @@ const closeCheckoutModal = () => {
 
 const handleReserveEvent = async () => {
   try {
-    await reserveTicket({
-      event_id: selectedEvent.value.id,
-      quantity: ticketQuantity.value,
-    });
-    isEventReserved.value = true;
-    toast.success("Tickets reserved successfully!");
+    if (isEventReserved.value) {
+      await unReserveTicket({
+        event_id: selectedEvent.value.id,
+        user_id: currentUser,
+      });
+      isEventReserved.value = false;
+      toast.success("Event unreserved successfully.");
+    } else {
+      await reserveTicket({
+        event_id: selectedEvent.value.id,
+        user_id: currentUser,
+        quantity: ticketQuantity.value,
+        total_price: totalPrice.value,
+      });
+      isEventReserved.value = true;
+      toast.success("Event reserved successfully.");
+    }
+    closeCheckoutModal();
   } catch (error) {
-    console.error("Error reserving tickets:", error);
+    console.error("Error updating reservation status:", error);
+    toast.error("Failed to update reservation status.");
   }
 };
 const updateFilters = async (event) => {
-  console.log("12333333333333333", event);
   filters.value = event.detail;
   resetPagination();
   await fetchEvents();
 };
 
 const goToEventDetail = (eventId) => {
-  router.push(`/event/${eventId}`);
+  if (currentUser) {
+    router.push(`/event/${eventId}`);
+  }
 };
 onMounted(() => {
   window.addEventListener("apply-filters", updateFilters);

@@ -141,7 +141,7 @@
 </template>
 
 <script setup>
-import { ref, watch,onMounted } from "vue";
+import { ref, watch, onMounted } from "vue";
 import { useQuery, useMutation } from "@vue/apollo-composable";
 import GetAllCategories from "~/graphql/query/GetAllCategories.gql";
 import GetAllTags from "~/graphql/query/GetAllTags.gql";
@@ -152,26 +152,7 @@ import UpdateSingleTag from "~/graphql/mutations/UpdateTag.gql";
 import CreateSingleCategory from "~/graphql/mutations/CreateCategoryMutation.gql";
 import CreateSingleTag from "~/graphql/mutations/CreateTagMutation.gql";
 import { toast } from "vue3-toastify";
-
-const { onResult: tagResult, refetch: refetchTags } = useQuery(GetAllTags, {
-  limit: 10,
-  offset: 0,
-  order_by: [{ created_at: "desc" }],
-});
-const { onResult: categoryResult, refetch: refetchCategories } = useQuery(
-  GetAllCategories,
-  {
-    limit: 10,
-    offset: 0,
-    order_by: [{ created_at: "desc" }],
-  }
-);
-const { mutate: createTag } = useMutation(CreateSingleTag);
-const { mutate: createCategory } = useMutation(CreateSingleCategory);
-const { mutate: deleteTag } = useMutation(DeleteSingleTag);
-const { mutate: deleteCategory } = useMutation(DeleteSingleCategory);
-const { mutate: updateTag } = useMutation(UpdateSingleTag);
-const { mutate: updateCategory } = useMutation(UpdateSingleCategory);
+import { useAuthStore } from "~/store";
 
 const tags = ref([]);
 const categories = ref([]);
@@ -182,16 +163,98 @@ const modalTitle = ref("");
 const modalButton = ref("");
 const currentItem = ref({ name: "" });
 const isEditing = ref(false);
-
-// Watch for query results to update the data
-// watch(tagResult, (newTags) => {
-//   if (newTags) tags.value = newTags.tags;
-// });
-
-// watch(categoryResult, (newCategories) => {
-//   if (newCategories) categories.value = newCategories.categories;
-// });
-
+const user = useAuthStore();
+const currentUserId = user.id;
+const currentUserRole = user.role;
+const currentUserToken = user.token;
+const { onResult: tagResult, refetch: refetchTags } = useQuery(
+  GetAllTags,
+  {
+    limit: 10,
+    offset: 0,
+    order_by: [{ created_at: "desc" }],
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUserId,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${currentUserToken}`,
+      },
+    },
+  }
+);
+const { onResult: categoryResult, refetch: refetchCategories } = useQuery(
+  GetAllCategories,
+  {
+    limit: 10,
+    offset: 0,
+    order_by: [{ created_at: "desc" }],
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUserId,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${currentUserToken}`,
+      },
+    },
+  }
+);
+const { mutate: createTag } = useMutation(CreateSingleTag, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUserId,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${currentUserToken}`,
+    },
+  },
+});
+const { mutate: createCategory } = useMutation(CreateSingleCategory,{
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUserId,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${currentUserToken}`,
+    },
+  },
+});
+const { mutate: deleteTag } = useMutation(DeleteSingleTag,{
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUserId,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${currentUserToken}`,
+    },
+  },
+});
+const { mutate: deleteCategory } = useMutation(DeleteSingleCategory,{
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUserId,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${currentUserToken}`,
+    },
+  },
+});
+const { mutate: updateTag } = useMutation(UpdateSingleTag,{
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUserId,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${currentUserToken}`,
+    },
+  },
+});
+const { mutate: updateCategory } = useMutation(UpdateSingleCategory,{
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUserId,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${currentUserToken}`,
+    },
+  },
+});
 tagResult((result) => {
   if (result.data) {
     tags.value = result.data.tags;
@@ -213,8 +276,8 @@ watch(currentTab, async (newTab) => {
 });
 
 onMounted(async () => {
-    await refetchTags();
-    await refetchCategories();
+  await refetchTags();
+  await refetchCategories();
 });
 
 const changeTab = (tab) => {

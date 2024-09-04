@@ -21,6 +21,7 @@ query GetAllEvents(
     updated_at
     user_id
     status
+    is_free
     venue
     user {
       created_at

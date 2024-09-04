@@ -66,33 +66,7 @@
             <li>{{ users.email || "No email available" }}</li>
           </ul>
         </div>
-
-        <!-- <div class="mt-6">
-          <h3 class="text-lg font-semibold">Events Created</h3>
-          <ul class="mt-4">
-            <li
-              v-for="event in userEvents.slice(0, 5)"
-              :key="event.id"
-              class="mb-4 p-4 bg-gray-100 rounded-lg shadow"
-            >
-              <h4 class="text-lg font-bold">
-                {{ event.title || "Untitled Event" }}
-              </h4>
-              <p class="text-gray-600">
-                {{ event.description || "No description available" }}
-              </p>
-              <p class="text-sm text-gray-500">
-                Date: {{ event.event_start_time || "No date available" }}
-              </p>
-            </li>
-          </ul>
-        </div> -->
       </div>
-
-      <!-- Empty or Error State -->
-      <!-- <div v-else>
-        <p>No user data available.</p>
-      </div> -->
     </div>
   </div>
 </template>
@@ -127,21 +101,42 @@ const {
   onResult: followingResult,
   onError: followingError,
   refetch: refetchFollowing,
-} = useQuery(GetUserFollowings, {
-  follower_id: currentUser,
-});
+} = useQuery(
+  GetUserFollowings,
+  {
+    follower_id: currentUser,
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": user.role,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 const {
   onResult: followersResult,
   onError: followersError,
   refetch: refetchFollowers,
-} = useQuery(GetUserFollowers, {
-  user_id: currentUser,
-});
+} = useQuery(
+  GetUserFollowers,
+  {
+    user_id: currentUser,
+  },
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": user.role,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 followingResult((result) => {
-  console.log("--------------===========", result.data);
   if (result.data) {
-    console.log("--------------+++++++++++", result.data);
-
     followingCounts.value = result.data.follows.length;
   }
 });
@@ -154,7 +149,15 @@ const fetchEvents = async () => {
   try {
     const { onResult, onError, refetch } = useQuery(getSingleUser, {
       id: currentUser,
-    });
+    },{
+        context: {
+          headers: {
+            "x-hasura-user-id": currentUser,
+            "x-hasura-role": user.role,
+            Authorization: `Bearer ${user.token}`,
+          },
+        },
+      });
 
     onResult((result) => {
       if (result.data) {
@@ -180,7 +183,7 @@ const redirectFollowing = () => {
   navigateTo("/user/following/" + currentUser);
 };
 const redirectFollowers = () => {
-  navigateTo("/user/follows/" + currentUser);
+  navigateTo("/user/followers/" + currentUser);
 };
 const redirectToEditProfile = () => {
   navigateTo("/user/profile/edit-profile/" + currentUser);

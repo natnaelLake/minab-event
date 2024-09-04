@@ -66,12 +66,13 @@ const searchLocation = async () => {
       selectedLocation.value = [location.lat, location.lon];
       locationName.value = location.display_name;
       center.value = [location.lat, location.lon];
-      emitLocationData();
     } else {
       console.error("No results found for the search query");
     }
   } catch (error) {
     console.error("Failed to search location: ", error);
+  } finally {
+    emitLocationData();
   }
 };
 
@@ -92,6 +93,8 @@ const fetchPlaceName = async (lat, lon) => {
     emitLocationData();
   } catch (error) {
     console.error("Failed to fetch place name: ", error);
+  }finally{
+    emitLocationData();
   }
 };
 </script>

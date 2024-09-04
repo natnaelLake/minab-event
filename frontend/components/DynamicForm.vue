@@ -19,9 +19,7 @@
     >
       <!-- Row Configuration for Date and Time -->
       <div
-        v-if="
-          [ 'event_start_time', 'event_end_time'].includes(name)
-        "
+        v-if="['event_start_time', 'event_end_time', 'is_free'].includes(name)"
         class="flex flex-wrap gap-4 mb-5"
       >
         <!-- Time Picker Handling for Start Time -->
@@ -77,6 +75,31 @@
             :class="['text-red-500 text-sm mt-1', fieldClass?.error]"
           />
         </div>
+        <div v-if="name === 'is_free'" class="flex-1 min-w-[200px]">
+          <label
+            :for="name"
+            :class="[
+              'block text-sm font-medium text-gray-600 dark:text-gray-800 mb-1',
+              fieldClass?.label,
+            ]"
+          >
+            {{ label }}
+          </label>
+          <Field
+            type="checkbox"
+            :id="name"
+            :name="name"
+            :class="[
+              'focus:ring-blue-500 dark:bg-gray-200 dark:text-gray-800 transition duration-300',
+              fieldClass?.input,
+            ]"
+            v-bind="attrs"
+          />
+          <ErrorMessage
+            :name="name"
+            :class="['text-red-500 text-sm mt-1', fieldClass?.error]"
+          />
+        </div>
       </div>
 
       <!-- Handling for File Input and Other Types -->
@@ -104,8 +127,6 @@
           ]"
           v-bind="attrs"
         />
-
-        <!-- General Input Handling -->
         <Field
           v-else
           :as="as"
@@ -134,6 +155,7 @@
           :name="name"
           :class="['text-red-500 text-sm mt-1', fieldClass?.error]"
         />
+        <!-- File Input Handling -->
       </template>
     </div>
     <slot />

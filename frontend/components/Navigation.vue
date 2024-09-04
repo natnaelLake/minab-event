@@ -128,7 +128,7 @@ const user = authStore.user;
 const showModal = ref(false);
 const drawerOpen = ref(false);
 const isAuthenticated = computed(() => authStore.isAuthenticated);
-const isAdmin = computed(() => authStore.role === "admin"); // Check if the role is admin
+const isAdmin = computed(() => authStore.role === "user-admin"); // Check if the role is admin
 
 const openModal = () => {
   showModal.value = true;

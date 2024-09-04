@@ -38,8 +38,7 @@ type RequestBody struct {
 }
 
 func sendToken(w http.ResponseWriter, id string, first_name string, last_name string, email string, profileImageURL string, role string) {
-	idStr := fmt.Sprintf("%d", id)
-	token, err := utilService.GetToken(idStr, "user")
+	token, err := utilService.GetToken(id, "user")
 	if err != nil {
 		http.Error(w, "something went wrong when creating token", http.StatusBadRequest)
 		return

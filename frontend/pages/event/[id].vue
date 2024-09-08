@@ -253,7 +253,6 @@
           "
           @click="handleReserveEvent"
           class="w-full px-6 py-3 rounded-full shadow-lg transition duration-200 ease-in-out text-lg font-semibold"
-          :disabled="isEventReserved"
         >
           {{ isEventReserved ? "Reserved" : "Buy Ticket" }}
         </button>
@@ -319,6 +318,11 @@ import UNFOLLOWS_USER from "~/graphql/mutations/UnfollowUser.gql";
 import EventOwnerFollowers from "~/graphql/query/getEventOwnerFollowers.gql";
 import GetReservedTickets from "~/graphql/query/GetReservedTickets.gql";
 import RESERVE_TICKET from "~/graphql/mutations/ReserveTicket.gql";
+import SaveTransaction from "~/graphql/mutations/SaveTransaction.gql";
+import GetSingleTransaction from "~/graphql/query/GetSingleTransaction.gql";
+
+import CreatePaymentMutation from "~/graphql/mutations/CreatePaymentMutation.gql";
+
 import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
 import { useAuthStore } from "~/store";
 const user = useAuthStore();
@@ -341,42 +345,83 @@ const tickets = ref([]);
 // const soldTickets = ref(0);
 
 // GraphQL Mutations
-const { mutate: reserveTicket } = useMutation(RESERVE_TICKET, {},{
-  context: {
-    headers: {
-      "x-hasura-user-id": currentUser,
-      "x-hasura-role": currentUserRole,
-      Authorization: `Bearer ${user.token}`,
+const { mutate: reserveTicket } = useMutation(
+  RESERVE_TICKET,
+  {},
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
     },
-  },
-});
-const { mutate: unReserveTicket } = useMutation(UNRESERVE_TICKET,{}, {
-  context: {
-    headers: {
-      "x-hasura-user-id": currentUser,
-      "x-hasura-role": currentUserRole,
-      Authorization: `Bearer ${user.token}`,
+  }
+);
+const { mutate: saveTransaction } = useMutation(
+  SaveTransaction,
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
     },
-  },
-});
-const { mutate: followUser } = useMutation(FOLLOWS_USER,{}, {
-  context: {
-    headers: {
-      "x-hasura-user-id": currentUser,
-      "x-hasura-role": currentUserRole,
-      Authorization: `Bearer ${user.token}`,
+  }
+);
+const { mutate: makePayment } = useMutation(
+  CreatePaymentMutation,
+  {},
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
     },
-  },
-});
-const { mutate: unfollowUser } = useMutation(UNFOLLOWS_USER,{}, {
-  context: {
-    headers: {
-      "x-hasura-user-id": currentUser,
-      "x-hasura-role": currentUserRole,
-      Authorization: `Bearer ${user.token}`,
+  }
+);
+const { mutate: unReserveTicket } = useMutation(
+  UNRESERVE_TICKET,
+  {},
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
     },
-  },
-});
+  }
+);
+const { mutate: followUser } = useMutation(
+  FOLLOWS_USER,
+  {},
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
+const { mutate: unfollowUser } = useMutation(
+  UNFOLLOWS_USER,
+  {},
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 
 // Fetch event details
 const { onResult, loading, onError } = useQuery(
@@ -586,46 +631,44 @@ const availableTickets = computed(
 const soldTickets = computed(
   () => eventData.value.quantity - availableTickets.value
 );
+
 // Handle event ticket reservation
 const handleReserveEvent = async () => {
   try {
-    if (isEventReserved.value) {
-      await unReserveTicket(
-        {
-          event_id: eventId,
-          user_id: currentUser,
-        },
-        {
-          context: {
-            headers: {
-              "x-hasura-user-id": currentUser,
-              "x-hasura-role": currentUserRole,
-              Authorization: `Bearer ${user.token}`,
-            },
-          },
-        }
-      );
-      isEventReserved.value = false;
-      toast.success("Event unreserved successfully.");
+    const transactionData = {
+      total_price: totalPrice.value,
+      tx_ref: `txn_${Date.now()}`,
+      event_id: eventId,
+      quantity: ticketQuantity.value,
+    };
+    const input = {
+      total_price: totalPrice.value,
+      tx_ref: `txn_${Date.now()}`,
+      event_id: eventId,
+      user_id: currentUser,
+      quantity: ticketQuantity.value,
+      email: user.user.email,
+      first_name: user.user.first_name,
+      last_name: user.user.last_name,
+      return_url: `${
+        window.location.origin
+      }/payment-status?tx_ref=txn_${Date.now()}`,
+    };
+    await saveTransaction({ ...transactionData });
+
+    const result = await makePayment({ input });
+
+    // Log the response to ensure everything works as expected
+    console.log("Payment response:", result);
+
+    // Extract the checkout URL from the response
+    const checkoutUrl = result.data.processPayment.data.checkout_url;
+
+    // Redirect the user to the payment checkout page
+    if (checkoutUrl) {
+      window.location.href = checkoutUrl;
     } else {
-      await reserveTicket(
-        {
-          event_id: eventId,
-          quantity: ticketQuantity.value,
-          total_price: totalPrice.value,
-        },
-        {
-          context: {
-            headers: {
-              "x-hasura-user-id": currentUser,
-              "x-hasura-role": currentUserRole,
-              Authorization: `Bearer ${user.token}`,
-            },
-          },
-        }
-      );
-      isEventReserved.value = true;
-      toast.success("Event reserved successfully.");
+      console.error("No checkout URL found in the response");
     }
   } catch (error) {
     console.error("Error updating reservation status:", error);

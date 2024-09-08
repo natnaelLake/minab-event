@@ -1,0 +1,17 @@
+mutation SaveTransaction(
+  $tx_ref: String!
+  $event_id: uuid!
+  $quantity: Int!
+  $total_price: numeric!
+) {
+  insert_transactions(
+    objects: {
+      tx_ref: $tx_ref
+      total_price: $total_price
+      quantity: $quantity
+      event_id: $event_id
+    }
+  ) {
+    affected_rows
+  }
+}

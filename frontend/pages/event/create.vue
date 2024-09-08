@@ -445,7 +445,7 @@ const onSubmit = async (values) => {
         : values.location,
       venue: values.venue,
       is_free: values.is_free,
-      price: values.is_free ? 0 : parseFloat(values.price) || 0,
+      price: parseFloat(values.price) || 0,
       quantity: parseInt(values.quantity) || 1,
       preparation_time: values.preparation_time,
       event_start_time: values.event_start_time,

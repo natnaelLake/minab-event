@@ -1,9 +1,8 @@
-mutation InsertFollow($followerId: uuid!, $userId: uuid!) {
+mutation InsertFollow($followerId: uuid!) {
   insert_follows_one(
     object: {
       created_at: "now()"
       follower_id: $followerId
-      user_id: $userId
     }
   ) {
     created_at

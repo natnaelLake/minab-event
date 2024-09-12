@@ -224,7 +224,7 @@
 
       <!-- Quantity and Total Price Section -->
       <div class="flex items-center justify-between mb-4">
-        <div v-if="currentUser !== eventData.user.id" class="flex flex-col">
+        <div  class="flex flex-col">
           <label for="quantity" class="text-sm font-medium text-gray-600 mb-1"
             >Quantity</label
           >
@@ -244,7 +244,7 @@
       </div>
 
       <!-- Reserve Button Section -->
-      <div class="mt-4" v-if="currentUser !== eventData.user.id">
+      <div class="mt-4">
         <button
           :class="
             isEventReserved
@@ -325,6 +325,7 @@ import CreatePaymentMutation from "~/graphql/mutations/CreatePaymentMutation.gql
 
 import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
 import { useAuthStore } from "~/store";
+
 const user = useAuthStore();
 const currentUser = user.id;
 const currentUserRole = user.role;
@@ -370,7 +371,7 @@ const { mutate: saveTransaction } = useMutation(
     },
   }
 );
-const { mutate: makePayment } = useMutation(
+const { mutate: makePayment, } = useMutation(
   CreatePaymentMutation,
   {},
   {
@@ -603,6 +604,7 @@ const followOwner = async () => {
       await followUser(
         {
           followerId: currentUser,
+          userId: eventData.value.user.id,
         },
         {
           context: {

@@ -150,11 +150,12 @@
       <!-- Modal Trigger -->
       <button
         type="submit"
-        class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md focus:outline-none transition-all duration-300"
+        class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md focus:outline-none transition-all duration-300 flex justify-center items-center"
         :disabled="createEventLoading"
         :class="{ 'opacity-50 cursor-not-allowed': createEventLoading }"
       >
-        {{ createEventLoading ? "Creating Event..." : "Create Event" }}
+        <VueSpinner v-if="createEventLoading" size="24" color="#ffffff" />
+        <span v-else>Create Event</span>
       </button>
     </DynamicForm>
 
@@ -219,6 +220,7 @@ import { useRouter } from "vue-router";
 import LocationMap from "@/components/LocationMap.vue";
 import GetAllCategories from "~/graphql/query/GetAllCategories.gql";
 import GetAllTags from "~/graphql/query/GetAllTags.gql";
+import { VueSpinner } from "vue3-spinners";
 
 const authStore = useAuthStore();
 const router = useRouter();
@@ -228,7 +230,6 @@ const {
   onDone: onCreateEventDone,
   onError: onCreateEventError,
 } = useMutation(createEventMutation, {
-
   context: {
     headers: {
       "x-hasura-user-id": authStore.user.id,
@@ -405,6 +406,7 @@ const onSubmit = async (values) => {
   if (!validateForm()) return; // Prevent submission if there are errors
 
   try {
+    createEventLoading.value = true;
     const readFilesAsBase64 = (file) => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();

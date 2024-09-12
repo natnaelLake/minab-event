@@ -57,7 +57,6 @@ const handlePaymentStatus = async () => {
   const params = new URLSearchParams(window.location.search);
   const status = params.get("status");
   const tx_ref = params.get("tx_ref");
-  console.log("................", status);
   if (!tx_ref) {
     console.error("Transaction reference not found.");
     return;

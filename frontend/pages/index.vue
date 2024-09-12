@@ -149,7 +149,6 @@
           }"
           @click="handleReserveEvent"
           class="w-full px-6 py-3 rounded-full shadow-lg transition duration-200 ease-in-out text-lg font-semibold"
-          :disabled="isEventReserved"
         >
           {{ isEventReserved ? "Reserved" : "Buy Ticket" }}
         </button>
@@ -183,13 +182,17 @@ import { formatDistance, format, parseISO } from "date-fns";
 import { toast } from "vue3-toastify";
 import { useAuthStore } from "~/store";
 import SkeletonLoader from "~/components/SkeletonLoader.vue";
-import { useRouter } from "vue-router";
+import { useRouter,useRoute } from "vue-router";
+import SaveTransaction from "~/graphql/mutations/SaveTransaction.gql";
+import CreatePaymentMutation from "~/graphql/mutations/CreatePaymentMutation.gql";
 
 // Router and Auth Store
 const user = useAuthStore();
 const currentUser = user.id;
 const currentUserRole = user.role;
 const router = useRouter();
+const route = useRoute(); // Import the current route
+
 // Reactive State
 const events = ref([]);
 const ticketQuantity = ref(1);
@@ -240,7 +243,28 @@ const { mutate: unReserveTicket } = useMutation(UNRESERVE_TICKET, {
     },
   },
 });
-
+const { mutate: saveTransaction } = useMutation(SaveTransaction, {
+  context: {
+    headers: {
+      "x-hasura-user-id": currentUser,
+      "x-hasura-role": currentUserRole,
+      Authorization: `Bearer ${user.token}`,
+    },
+  },
+});
+const { mutate: makePayment } = useMutation(
+  CreatePaymentMutation,
+  {},
+  {
+    context: {
+      headers: {
+        "x-hasura-user-id": currentUser,
+        "x-hasura-role": currentUserRole,
+        Authorization: `Bearer ${user.token}`,
+      },
+    },
+  }
+);
 const { mutate: unLikeEvent } = useMutation(UNLikeEvent, {
   context: {
     headers: {
@@ -280,15 +304,36 @@ const { mutate: unBookMarkEvent } = useMutation(UNBookMarkEvent, {
     },
   },
 });
+const resetPagination = () => {
+  events.value = [];
+  page.value = 0;
+  hasMoreTokens.value = true;
+  isFetching.value = false;
+};
 
 watch(searchTerm, async (newSearchTerm) => {
   resetPagination();
   await fetchEvents();
 });
 
+// Watch route changes and refetch events when returning to the page
+watch(
+  () => route.fullPath,
+  async () => {
+    // Reset pagination and refetch events when the route changes
+    resetPagination();
+    await fetchEvents();
+  }
+);
+
+onMounted(async () => {
+  resetPagination();
+  await fetchEvents();
+});
+
 // Methods
-onMounted(() => {
-  fetchEvents();
+onMounted(async () => {
+  await fetchEvents();
   observeLastElement();
 });
 
@@ -347,6 +392,7 @@ const fetchEvents = async () => {
           checkLike(event);
         });
       }
+      console.log("---------------------++++++++++++++", events.value);
       page.value++;
       isFetching.value = false;
     });
@@ -377,12 +423,6 @@ const observeLastElement = () => {
   }
 };
 
-const resetPagination = () => {
-  events.value = [];
-  page.value = 0;
-  hasMoreTokens.value = true;
-  isFetching.value = false;
-};
 const checkBookmark = (event) => {
   const { onResult: bookmarkResult } = useQuery(
     GetEventBookMark,
@@ -511,26 +551,44 @@ const closeCheckoutModal = () => {
   ticketQuantity.value = 1;
 };
 
+// Handle event ticket reservation
 const handleReserveEvent = async () => {
   try {
-    if (isEventReserved.value) {
-      await unReserveTicket({
-        event_id: selectedEvent.value.id,
-        user_id: currentUser,
-      });
-      isEventReserved.value = false;
-      toast.success("Event unreserved successfully.");
+    const transactionData = {
+      total_price: totalPrice.value,
+      tx_ref: `txn_${Date.now()}`,
+      event_id: selectedEvent.value.id,
+      quantity: ticketQuantity.value,
+    };
+    const input = {
+      total_price: totalPrice.value,
+      tx_ref: `txn_${Date.now()}`,
+      event_id: selectedEvent.value.id,
+      user_id: currentUser,
+      quantity: ticketQuantity.value,
+      email: user.user.email,
+      first_name: user.user.first_name,
+      last_name: user.user.last_name,
+      return_url: `${
+        window.location.origin
+      }/payment-status?tx_ref=txn_${Date.now()}`,
+    };
+    await saveTransaction({ ...transactionData });
+
+    const result = await makePayment({ input });
+
+    // Log the response to ensure everything works as expected
+    console.log("Payment response:", result);
+
+    // Extract the checkout URL from the response
+    const checkoutUrl = result.data.processPayment.data.checkout_url;
+
+    // Redirect the user to the payment checkout page
+    if (checkoutUrl) {
+      window.location.href = checkoutUrl;
     } else {
-      await reserveTicket({
-        event_id: selectedEvent.value.id,
-        user_id: currentUser,
-        quantity: ticketQuantity.value,
-        total_price: totalPrice.value,
-      });
-      isEventReserved.value = true;
-      toast.success("Event reserved successfully.");
+      console.error("No checkout URL found in the response");
     }
-    closeCheckoutModal();
   } catch (error) {
     console.error("Error updating reservation status:", error);
     toast.error("Failed to update reservation status.");

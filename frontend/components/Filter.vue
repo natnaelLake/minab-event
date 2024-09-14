@@ -227,10 +227,6 @@ import GetAllTags from "~/graphql/query/GetAllTags.gql";
 import { useAuthStore } from "~/store";
 
 // Filter fields
-const user = useAuthStore();
-const currentUser = user.id;
-const currentUserRole = user.role;
-const currentUserToken = user.token;
 const venue = ref("");
 const start_date = ref("");
 const end_date = ref("");
@@ -383,7 +379,7 @@ const generateWhereClause = () => {
     where.categories = { _eq: selectedCategoryValue.value };
   }
   if (selectedTagValues.value.length > 0) {
-    where.tags = { _in: `{${selectedTagValues.value}}` };
+    where.tags = { _ilike: `%{${selectedTagValues.value}}%` };
   }
   if (minPrice.value || maxPrice.value) {
     where.price = {};

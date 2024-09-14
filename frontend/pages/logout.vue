@@ -42,4 +42,3 @@
   <style lang="scss" scoped>
   /* Custom styles can go here */
   </style>
-  

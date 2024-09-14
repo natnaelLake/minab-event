@@ -4,6 +4,7 @@ query GetSingleUser($id: uuid!) {
 		last_name
 		first_name
 		email
+		password
 		role
 		profile_image_url
 		bio

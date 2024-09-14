@@ -3,9 +3,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from "vue";
 import EventCard from "~/components/EventCard.vue";
 import Filter from "~/components/Filter.vue";
 import GetEvents from "~/graphql/query/GetEvents.gql";
-import RESERVE_TICKET from "~/graphql/mutations/ReserveTicket.gql";
 import GetReservedTickets from "~/graphql/query/GetReservedTickets.gql";
-import UNRESERVE_TICKET from "~/graphql/mutations/UnReserveTicket.gql";
 import BookMarkEvent from "~/graphql/mutations/BookMarkEvent.gql";
 import LikeEvent from "~/graphql/mutations/LikeEvent.gql";
 import UNBookMarkEvent from "~/graphql/mutations/UNBookMarkEvent.gql";
@@ -22,6 +20,7 @@ import CreatePaymentMutation from "~/graphql/mutations/CreatePaymentMutation.gql
 import { VueSpinner } from "vue3-spinners";
 import useQueryComposable from "~/composables/useQueryComposable";
 import useMutationComposable from "~/composables/useMutationComposable";
+import SwiperCarousel from "~/components/SwiperCarousel.vue";
 
 const user = useAuthStore();
 const currentUser = user.id;
@@ -101,44 +100,42 @@ const fetchEvents = async () => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
   try {
-    const { onResult, onError } = useQueryComposable(GetEvents,
-      {
-        limit: itemsPerPage,
-        offset: page.value * itemsPerPage,
-        order_by: [{ created_at: "desc" }],
-        where: {
-          _and: [
-            {
-              _or: [
-                {
-                  title: searchTerm.value
-                    ? { _ilike: `%${searchTerm.value}%` }
-                    : {},
-                },
-                {
-                  description: searchTerm.value
-                    ? { _ilike: `%${searchTerm.value}%` }
-                    : {},
-                },
-                {
-                  tags: searchTerm.value
-                    ? {
-                        _in: `{${searchTerm.value
-                          .split(" ")
-                          .map((tag) => tag.trim())
-                          .filter((tag) => tag !== "")}}`,
-                      }
-                    : {},
-                },
-              ],
-            },
-            ...Object.entries(filters.value).map(([key, value]) => ({
-              [key]: value,
-            })),
-          ],
-        },
-      }      
-    );
+    const { onResult, onError } = useQueryComposable(GetEvents, {
+      limit: itemsPerPage,
+      offset: page.value * itemsPerPage,
+      order_by: [{ created_at: "desc" }],
+      where: {
+        _and: [
+          {
+            _or: [
+              {
+                title: searchTerm.value
+                  ? { _ilike: `%${searchTerm.value}%` }
+                  : {},
+              },
+              {
+                description: searchTerm.value
+                  ? { _ilike: `%${searchTerm.value}%` }
+                  : {},
+              },
+              {
+                tags: searchTerm.value
+                  ? {
+                      _ilike: `%{${searchTerm.value
+                        .split(" ")
+                        .map((tag) => tag.trim())
+                        .filter((tag) => tag !== "")}}%`,
+                    }
+                  : {},
+              },
+            ],
+          },
+          ...Object.entries(filters.value).map(([key, value]) => ({
+            [key]: value,
+          })),
+        ],
+      },
+    });
 
     onResult(({ data }) => {
       if (data.events && data.events.length < itemsPerPage) {
@@ -253,7 +250,8 @@ const handleFormatDistance = (date) =>
   });
 
 const showCheckoutModal = (event) => {
-  const { onResult: reservedTicketsResult } = useQueryComposable(GetReservedTickets,
+  const { onResult: reservedTicketsResult } = useQueryComposable(
+    GetReservedTickets,
     {
       event_id: event.id,
     }
@@ -323,6 +321,11 @@ const updateFilters = async (event) => {
   resetPagination();
   await fetchEvents();
 };
+const filterByTagHandler = async (tag) => {
+  filters.value = tag.detail.where;
+  resetPagination();
+  await fetchEvents();
+};
 
 const goToEventDetail = (eventId) => {
   if (currentUser) {
@@ -336,6 +339,13 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("apply-filters", updateFilters);
 });
+onMounted(() => {
+  window.addEventListener("selected-tag", filterByTagHandler);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("selected-tag", filterByTagHandler);
+});
 </script>
 
 <template>
@@ -346,6 +356,9 @@ onUnmounted(() => {
       <Filter @apply-filters="updateFilters" />
     </div>
     <div class="flex-1 ml-64 p-6">
+      <div class="mb-d flex justify-center items-center">
+        <SwiperCarousel @selected-tag="filterByTagHandler" />
+      </div>
       <div class="mb-6">
         <input
           v-model="searchTerm"
@@ -356,7 +369,10 @@ onUnmounted(() => {
       </div>
 
       <!-- Event Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        v-if="events"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
         <div
           v-for="event in events"
           :key="event.id"
@@ -482,9 +498,9 @@ onUnmounted(() => {
           class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg shadow-md focus:outline-none transition-all duration-300 flex justify-center items-center"
           :disabled="loading"
           :class="{
-            'bg-gray-500 text-white opacity-50 cursor-not-allowed': isEventReserved || loading,
-            'bg-blue-500 text-white hover:bg-blue-600':
-              !isEventReserved,
+            'bg-gray-500 text-white opacity-50 cursor-not-allowed':
+              isEventReserved || loading,
+            'bg-blue-500 text-white hover:bg-blue-600': !isEventReserved,
           }"
           @click="handleReserveEvent"
         >

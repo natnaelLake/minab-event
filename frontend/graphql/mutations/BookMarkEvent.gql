@@ -1,0 +1,8 @@
+mutation BookMark($event_id: uuid!) {
+  insert_bookmarks_one(object: { event_id: $event_id}) {
+    event_id
+    created_at
+    id
+    user_id
+  }
+}

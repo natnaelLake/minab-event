@@ -1,0 +1,12 @@
+query GetSingleUser($id: uuid!) {
+	users_by_pk(id: $id) {
+		id
+		last_name
+		first_name
+		email
+		role
+		profile_image_url
+		bio
+		status
+	}
+}

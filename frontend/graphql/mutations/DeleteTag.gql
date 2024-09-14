@@ -1,0 +1,7 @@
+mutation DeleteTag($tag_id: uuid!) {
+  delete_tags_by_pk(id: $tag_id) {
+    created_at
+    id
+    name
+  }
+}

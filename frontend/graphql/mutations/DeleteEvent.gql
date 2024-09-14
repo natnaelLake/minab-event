@@ -1,0 +1,5 @@
+mutation DeleteEvent($event_id: uuid!) {
+  delete_events(where: { id: { _eq: $event_id } }) {
+    affected_rows
+  }
+}

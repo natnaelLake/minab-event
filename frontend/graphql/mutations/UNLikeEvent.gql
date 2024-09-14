@@ -1,0 +1,9 @@
+mutation UNLikeEvent($event_id: uuid!, $user_id: uuid!) {
+  delete_likes(
+    where: {
+      _and: { event_id: { _eq: $event_id }, user_id: { _eq: $user_id } }
+    }
+  ) {
+    affected_rows
+  }
+}

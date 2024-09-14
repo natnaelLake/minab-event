@@ -1,0 +1,9 @@
+query GetSingleTransaction($tx_ref: String!) {
+  transactions_by_pk(tx_ref: $tx_ref) {
+    event_id
+    quantity
+    total_price
+    tx_ref
+    user_id
+  }
+}

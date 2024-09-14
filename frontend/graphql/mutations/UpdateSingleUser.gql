@@ -1,0 +1,15 @@
+mutation UpdateSingleUser($user_id: uuid!, $changes: users_set_input!) {
+  update_users_by_pk(pk_columns: { id: $user_id }, _set: $changes) {
+    updated_at
+    status
+    role
+    profile_image_url
+    password
+    last_name
+    id
+    first_name
+    email
+    created_at
+    bio
+  }
+}

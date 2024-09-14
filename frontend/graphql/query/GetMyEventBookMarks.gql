@@ -1,0 +1,39 @@
+query GetEventBookMarks(
+  $user_id: uuid!
+  $limit: Int
+  $offset: Int
+  $order_by: [bookmarks_order_by!]
+) {
+  bookmarks(
+    limit: $limit
+    offset: $offset
+    order_by: $order_by
+    where: { user_id: { _eq: $user_id } }
+  ) {
+    created_at
+    id
+    event {
+      categories
+      created_at
+      description
+      event_end_time
+      event_start_time
+      featured_image_url
+      id
+      location
+      preparation_time
+      price
+      quantity
+      tags
+      title
+      total_ticket
+      updated_at
+      venue
+      user {
+        first_name
+        id
+        profile_image_url
+      }
+    }
+  }
+}

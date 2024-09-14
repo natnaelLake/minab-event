@@ -1,0 +1,11 @@
+query GetAllCategories(
+  $limit: Int!
+  $offset: Int!
+  $order_by: [categories_order_by!]
+) {
+  categories(limit: $limit, offset: $offset, order_by: $order_by) {
+    created_at
+    id
+    name
+  }
+}

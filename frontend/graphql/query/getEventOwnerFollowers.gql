@@ -1,0 +1,14 @@
+query GetAllEvents($followerId:uuid!) {
+  follows(
+    where: { follower_id: { _eq: $followerId } }
+  ) {
+    event_id
+    follower_id
+    id
+    user {
+      email
+      first_name
+      id
+    }
+  }
+}

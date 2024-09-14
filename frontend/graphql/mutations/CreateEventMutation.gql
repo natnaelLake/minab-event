@@ -1,0 +1,57 @@
+mutation CreateEvent(
+  $title: String!
+  $description: String!
+  $location: String!
+  $venue: String!
+  $price: numeric!
+  $quantity: Int!
+  $preparation_time: interval!
+  $event_start_time: String!
+  $event_end_time: String!
+  $tags: String!
+  $categories: String!
+  $featured_image_url: String!
+  $is_free:Boolean!
+) {
+  insert_events_one(
+    object: {
+      title: $title
+      description: $description
+      location: $location
+      venue: $venue
+      price: $price
+      quantity: $quantity
+      preparation_time: $preparation_time
+      tags: $tags
+      categories: $categories
+      featured_image_url: $featured_image_url
+      event_start_time: $event_start_time
+      event_end_time: $event_end_time
+      is_free:$is_free
+    }
+  ) {
+    location
+    preparation_time
+    price
+    quantity
+    tags
+    title
+    updated_at
+    venue
+    user_id
+    id
+    featured_image_url
+    event_start_time
+    event_end_time
+    description
+    created_at
+    categories
+    user {
+      email
+      first_name
+      id
+      last_name
+      profile_image_url
+    }
+  }
+}

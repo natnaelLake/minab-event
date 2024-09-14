@@ -1,0 +1,22 @@
+query GetDashboardStats {
+  totalEvents: events_aggregate {
+    aggregate {
+      count
+    }
+  }
+  activeUsers: users_aggregate(where: { status: { _eq: "Active" } }) {
+    aggregate {
+      count
+    }
+  }
+  activeEvents: events_aggregate(where: { status: { _eq: "Active" } }) {
+    aggregate {
+      count
+    }
+  }
+  totalUsers: users_aggregate {
+    aggregate {
+      count
+    }
+  }
+}

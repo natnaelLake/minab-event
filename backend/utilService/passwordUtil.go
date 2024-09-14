@@ -16,10 +16,6 @@ func ComparePasswords(hashedPassword string, password string) bool {
 }
 
 func HashPassword(password string) (string, error) {
-    // Generate a salt for the password hash
-    // The cost parameter is used to determine the complexity of the hash
-    // Increasing the cost parameter makes the hash more computationally expensive to generate
-    // and therefore harder to crack
     hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
     if err != nil {
         return "", err

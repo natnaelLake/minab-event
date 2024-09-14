@@ -18,7 +18,6 @@ func main() {
 	// Define HTTP server and routes
 	http.HandleFunc("/register", middlewares.ApplyMiddleware(controller.Signup, middlewares.Logger, middlewares.CorsMiddleware))
 	http.HandleFunc("/login", middlewares.ApplyMiddleware(controller.Login, middlewares.Logger, middlewares.CorsMiddleware))
-	http.HandleFunc("/updateUser", middlewares.ApplyMiddleware(controller.UpdateUser, middlewares.Logger, middlewares.CorsMiddleware))
 	http.HandleFunc("/uploadImage", middlewares.ApplyMiddleware(controller.UploadImagesHandler, middlewares.Logger, middlewares.CorsMiddleware))
 	http.HandleFunc("/process-payment", middlewares.ApplyMiddleware(controller.ProcessPaymentHandler, middlewares.Logger, middlewares.CorsMiddleware))
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {

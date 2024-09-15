@@ -1,0 +1,11 @@
+query GetTotalBookingsPerEvent {
+  events {
+    id
+    title
+    total_bookings: tickets_aggregate {
+      aggregate {
+        count
+      }
+    }
+  }
+}

@@ -51,6 +51,24 @@ export const routes = [
     },
   },
   {
+    name: "Supports",
+    path: "/user/supports",
+    component: () => import("@/pages/user/supports.vue"),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ["user"],
+    },
+  },
+  {
+    name: "Feedbacks",
+    path: "/user/feedbacks",
+    component: () => import("@/pages/user/feedbacks.vue"),
+    meta: {
+      requiresAuth: true,
+      allowedRoles: ["user"],
+    },
+  },
+  {
     name: "Dashboard",
     path: "/user-admin/dashboard",
     component: () => import("@/pages/user-admin/dashboard.vue"),

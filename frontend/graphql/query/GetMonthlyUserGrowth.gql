@@ -1,0 +1,6 @@
+query GetMonthlyUserGrowth {
+  monthly_user_growth {
+    month
+    user_count
+  }
+}

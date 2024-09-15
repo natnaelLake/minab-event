@@ -1,0 +1,7 @@
+query GetTotalTicketsSold {
+  tickets_aggregate {
+    aggregate {
+      count
+    }
+  }
+}

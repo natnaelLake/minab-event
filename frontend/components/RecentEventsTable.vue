@@ -12,21 +12,60 @@ const events = ref([]);
 const itemsPerPage = 5;
 const currentPage = ref(1);
 const totalEvents = ref(0);
-const user = useAuthStore();
+const searchTerm = ref("");
+
 const getOffset = () => (currentPage.value - 1) * itemsPerPage;
-// Use Apollo's useQuery to fetch events with pagination
-const { onResult, onError, refetch } = useQueryComposable(
-  GetEvents,
-  {
+const resetPagination = () => {
+  currentPage.value = 1;
+};
+
+// Apollo useQuery to fetch events with pagination and search
+const { onResult, onError, refetch } = useQueryComposable(GetEvents, {
+  limit: itemsPerPage,
+  offset: getOffset(),
+  order_by: [{ created_at: "desc" }],
+  where: {
+    _or: [
+      {
+        title: { _ilike: `%${searchTerm.value}%` },
+      },
+      {
+        description: { _ilike: `%${searchTerm.value}%` },
+      },
+    ],
+  },
+});
+
+// Watch for changes in searchTerm and refetch data
+watch(searchTerm, async (newSearchTerm) => {
+  resetPagination();
+  await refetch({
     limit: itemsPerPage,
     offset: getOffset(),
-    order_by: [{ created_at: "desc" }],
-    where: {},
-  }
-);
-watch(currentPage, (newPage) => {
-  refetch({ limit: itemsPerPage, offset: getOffset() });
+    where: {
+      _or: [
+        { title: { _ilike: `%${newSearchTerm}%` } },
+        { description: { _ilike: `%${newSearchTerm}%` } },
+      ],
+    },
+  });
 });
+
+// Watch for changes in currentPage and refetch data
+watch(currentPage, (newPage) => {
+  refetch({
+    limit: itemsPerPage,
+    offset: getOffset(),
+    where: {
+      _or: [
+        { title: { _ilike: `%${searchTerm.value}%` } },
+        { description: { _ilike: `%${searchTerm.value}%` } },
+      ],
+    },
+  });
+});
+
+// Handle Apollo results
 onResult((result) => {
   if (result.data) {
     events.value = result.data.events;
@@ -41,6 +80,7 @@ onError((error) => {
     position: toast.POSITION.TOP_RIGHT,
   });
 });
+
 
 // Calculate total pages
 const totalPages = computed(() => Math.ceil(totalEvents.value / itemsPerPage));
@@ -60,9 +100,8 @@ const prevPage = () => {
 };
 
 // Apollo mutation for updating event status
-const { mutate: updateEventStatusMutation } = useMutationComposable(
-  updateEventStatus,
-);
+const { mutate: updateEventStatusMutation } =
+  useMutationComposable(updateEventStatus);
 
 const blockEvent = async (id) => {
   try {
@@ -108,6 +147,14 @@ const formatEventDate = (date) => {
 </script>
 <template>
   <div class="p-6">
+    <div class="mb-6">
+      <input
+        v-model="searchTerm"
+        type="text"
+        placeholder="Search Events..."
+        class="w-full p-4 border rounded"
+      />
+    </div>
     <div class="bg-white shadow-md rounded-lg">
       <h2 class="p-4 text-lg font-semibold bg-gray-100">Recent Events</h2>
       <div class="relative">

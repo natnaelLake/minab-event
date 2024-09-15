@@ -9,7 +9,6 @@ import {
 } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/vue";
 
-// Option 1: Importing core and module styles separately
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
@@ -109,7 +108,7 @@ export default {
       }"
       :pagination="{ clickable: true }"
       :navigation="true"
-      :autoplay="{ delay: 3000, disableOnInteraction: false }"
+      :autoplay="{ delay: 1000, disableOnInteraction: false }"
       @swiper="onSwiper"
       @slideChange="onSlideChange"
     >

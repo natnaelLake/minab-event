@@ -1,0 +1,6 @@
+query GetMonthlyRevenue {
+  monthly_revenue {
+    month
+    total_revenue
+  }
+}

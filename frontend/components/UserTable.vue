@@ -1,3 +1,223 @@
+<script setup>
+import { ref, computed, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import getAllUsers from "~/graphql/query/getAllUsers.gql";
+import insertAdminMutation from "~/graphql/mutations/insertAdmin.gql";
+import updateAdminMutation from "~/graphql/mutations/updateAdmin.gql";
+import updateUserStatus from "~/graphql/mutations/updateUserStatus.gql";
+import useQueryComposable from "~/composables/useQueryComposable";
+import useMutationComposable from "~/composables/useMutationComposable";
+import { hashPassword } from "~/utils/authUtils";
+import { toast } from "vue3-toastify";
+import { useAuthStore } from "~/store";
+
+const router = useRouter();
+const route = useRoute();
+const user = useAuthStore();
+const users = ref([]);
+const itemsPerPage = 5;
+const currentPage = ref(1);
+const totalUsers = ref(0);
+const searchTerm = ref("");
+
+const getOffset = () => (currentPage.value - 1) * itemsPerPage;
+const resetPagination = () => {
+  currentPage.value = 1;
+};
+// Reactive State
+const { onResult, onError, refetch } = useQueryComposable(getAllUsers, {
+  limit: itemsPerPage,
+  offset: getOffset(),
+  order_by: [{ created_at: "desc" }],
+  where: {
+    _or: [
+      {
+        first_name: { _ilike: `%${searchTerm.value}%` },
+      },
+      {
+        last_name: { _ilike: `%${searchTerm.value}%` },
+      },
+      {
+        email: { _ilike: `%${searchTerm.value}%` },
+      },
+    ],
+  },
+});
+watch(searchTerm, async (newSearchTerm) => {
+  resetPagination();
+  await refetch({
+    limit: itemsPerPage,
+    offset: getOffset(),
+    where: {
+      _or: [
+        {
+          first_name: { _ilike: `%${searchTerm.value}%` },
+        },
+        {
+          last_name: { _ilike: `%${searchTerm.value}%` },
+        },
+        {
+          email: { _ilike: `%${searchTerm.value}%` },
+        },
+      ],
+    },
+  });
+});
+watch(currentPage, (newPage) => {
+  refetch({
+    limit: itemsPerPage,
+    offset: getOffset(),
+    where: {
+      _or: [
+        {
+          first_name: { _ilike: `%${searchTerm.value}%` },
+        },
+        {
+          last_name: { _ilike: `%${searchTerm.value}%` },
+        },
+        {
+          email: { _ilike: `%${searchTerm.value}%` },
+        },
+      ],
+    },
+  });
+});
+onResult((result) => {
+  if (result.data) {
+    users.value = result.data.users;
+    totalUsers.value = result.data.users_aggregate?.aggregate?.count || 0;
+  }
+});
+
+onError((error) => {
+  console.error("Error fetching events: ", error.message);
+  toast.error("Something went wrong, try again", {
+    transition: toast.TRANSITIONS.FLIP,
+    position: toast.POSITION.TOP_RIGHT,
+  });
+});
+
+// Calculate total pages
+const totalPages = computed(() => Math.ceil(totalUsers.value / itemsPerPage));
+
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value += 1;
+    refetch(); // Refetch data for the next page
+  }
+};
+
+const prevPage = () => {
+  if (currentPage.value > 1) {
+    currentPage.value -= 1;
+    refetch(); // Refetch data for the previous page
+  }
+};
+
+// Check if the user is a super admin
+const isSuperAdmin = computed(() => user.role === "user-admin");
+
+// Modal State and Functions
+const isModalVisible = ref(false);
+const modalAction = ref(""); // "add" or "edit"
+const modalData = ref({ first_name: "", last_name: "", email: "", id: "" });
+
+const openModal = (action, user = null) => {
+  modalAction.value = action;
+  isModalVisible.value = true;
+  if (action === "edit" && user) {
+    modalData.value = { ...user };
+  } else {
+    modalData.value = { first_name: "", last_name: "", email: "" };
+  }
+};
+
+const closeModal = () => {
+  isModalVisible.value = false;
+  modalData.value = { first_name: "", last_name: "", email: "" };
+};
+
+// Apollo mutations for adding and editing admins
+const { mutate: insertUser } = useMutationComposable(insertAdminMutation);
+const { mutate: updateUser } = useMutationComposable(updateAdminMutation);
+const { mutate: updateUserStatusMutation } =
+  useMutationComposable(updateUserStatus);
+
+const submitModal = async () => {
+  if (modalAction.value === "add") {
+    await addAdmin();
+  } else if (modalAction.value === "edit") {
+    await editAdmin(modalData.value.id);
+  }
+  await refetch(); // Refetch users list after mutation
+  closeModal();
+};
+
+// Admin management functions
+const addAdmin = async () => {
+  const input = {
+    first_name: modalData.value.first_name,
+    last_name: modalData.value.last_name,
+    email: modalData.value.email,
+    password: await hashPassword(modalData.value.password),
+    role: "user-admin",
+  };
+  try {
+    await insertUser(input);
+    await refetch();
+    toast.success("Admin added successfully");
+  } catch (error) {
+    console.error("Error adding admin: ", error.message);
+    toast.error("Failed to add admin");
+  }
+};
+
+const editAdmin = async (id) => {
+  const input = {
+    first_name: modalData.value.first_name,
+    last_name: modalData.value.last_name,
+    email: modalData.value.email,
+  };
+  try {
+    await updateUser({ userId: id, changes: input });
+    await refetch();
+    toast.success("Admin updated successfully");
+  } catch (error) {
+    console.error("Error updating admin: ", error.message);
+    toast.error("Failed to update admin");
+  }
+};
+
+// User status management functions
+const suspendUser = async (id) => {
+  try {
+    await updateUserStatusMutation({
+      id,
+      status: "Blocked",
+    });
+    toast.success("User suspended successfully");
+    await refetch();
+  } catch (error) {
+    console.error("Error suspending user: ", error.message);
+    toast.error("Failed to suspend user");
+  }
+};
+
+const activateUser = async (id) => {
+  try {
+    await updateUserStatusMutation({
+      id,
+      status: "Active",
+    });
+    toast.success("User activated successfully");
+    await refetch();
+  } catch (error) {
+    console.error("Error activating user: ", error.message);
+    toast.error("Failed to activate user");
+  }
+};
+</script>
+
 <template>
   <div class="p-6 mt-20">
     <div class="flex justify-between items-center mb-6">
@@ -12,6 +232,7 @@
     </div>
     <div class="mb-6">
       <input
+        v-model="searchTerm"
         type="text"
         placeholder="Search Users..."
         class="w-full p-4 border rounded"
@@ -127,6 +348,13 @@
           placeholder="Email"
           class="w-full p-2 mb-4 border rounded"
         />
+        <input
+          v-if="modalAction === 'add'"
+          type="text"
+          v-model="modalData.password"
+          placeholder="Password ..."
+          class="w-full p-2 mb-4 border rounded"
+        />
 
         <div class="flex justify-end space-x-4">
           <button
@@ -146,176 +374,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, computed, onMounted, watch } from "vue";
-import { useRouter, useRoute } from "vue-router";
-import getAllUsers from "~/graphql/query/getAllUsers.gql";
-import insertAdminMutation from "~/graphql/mutations/insertAdmin.gql";
-import updateAdminMutation from "~/graphql/mutations/updateAdmin.gql";
-import updateUserStatus from "~/graphql/mutations/updateUserStatus.gql";
-import useQueryComposable from "~/composables/useQueryComposable";
-import useMutationComposable from "~/composables/useMutationComposable";
-
-import { toast } from "vue3-toastify";
-import { useAuthStore } from "~/store";
-
-const router = useRouter();
-const route = useRoute();
-const user = useAuthStore();
-const currentUser = user.id;
-const currentRole = user.role;
-const currentToken = user.token;
-const users = ref([]);
-const itemsPerPage = 5;
-const currentPage = ref(1);
-const totalUsers = ref(0);
-const getOffset = () => (currentPage.value - 1) * itemsPerPage;
-
-// Reactive State
-const { onResult, onError, refetch } = useQueryComposable(getAllUsers, {
-  limit: itemsPerPage,
-  offset: getOffset(),
-  order_by: [{ created_at: "desc" }],
-  where: {},
-});
-
-watch(currentPage, (newPage) => {
-  refetch({ limit: itemsPerPage, offset: getOffset() });
-});
-onResult((result) => {
-  if (result.data) {
-    users.value = result.data.users;
-    totalUsers.value = result.data.users_aggregate?.aggregate?.count || 0;
-  }
-});
-
-onError((error) => {
-  console.error("Error fetching events: ", error.message);
-  toast.error("Something went wrong, try again", {
-    transition: toast.TRANSITIONS.FLIP,
-    position: toast.POSITION.TOP_RIGHT,
-  });
-});
-
-// Calculate total pages
-const totalPages = computed(() => Math.ceil(totalUsers.value / itemsPerPage));
-
-const nextPage = () => {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value += 1;
-    refetch(); // Refetch data for the next page
-  }
-};
-
-const prevPage = () => {
-  if (currentPage.value > 1) {
-    currentPage.value -= 1;
-    refetch(); // Refetch data for the previous page
-  }
-};
-
-// Check if the user is a super admin
-const isSuperAdmin = computed(() => user.role === "user-admin");
-
-// Modal State and Functions
-const isModalVisible = ref(false);
-const modalAction = ref(""); // "add" or "edit"
-const modalData = ref({ first_name: "", last_name: "", email: "", id: "" });
-
-const openModal = (action, user = null) => {
-  modalAction.value = action;
-  isModalVisible.value = true;
-  if (action === "edit" && user) {
-    modalData.value = { ...user };
-  } else {
-    modalData.value = { first_name: "", last_name: "", email: "" };
-  }
-};
-
-const closeModal = () => {
-  isModalVisible.value = false;
-  modalData.value = { first_name: "", last_name: "", email: "" };
-};
-
-// Apollo mutations for adding and editing admins
-const { mutate: insertUser } = useMutationComposable(insertAdminMutation);
-const { mutate: updateUser } = useMutationComposable(updateAdminMutation);
-const { mutate: updateUserStatusMutation } = useMutationComposable(updateUserStatus);
-
-const submitModal = async () => {
-  if (modalAction.value === "add") {
-    await addAdmin();
-  } else if (modalAction.value === "edit") {
-    await editAdmin(modalData.value.id);
-  }
-  await refetch(); // Refetch users list after mutation
-  closeModal();
-};
-
-// Admin management functions
-const addAdmin = async () => {
-  const input = {
-    first_name: modalData.value.first_name,
-    last_name: modalData.value.last_name,
-    email: modalData.value.email,
-    role: "user-admin",
-  };
-  try {
-    await insertUser(input);
-    await refetch();
-    toast.success("Admin added successfully");
-  } catch (error) {
-    console.error("Error adding admin: ", error.message);
-    toast.error("Failed to add admin");
-  }
-};
-
-const editAdmin = async (id) => {
-  const input = {
-    first_name: modalData.value.first_name,
-    last_name: modalData.value.last_name,
-    email: modalData.value.email,
-  };
-  try {
-    await updateUser({ userId: id, changes: input });
-    await refetch();
-    toast.success("Admin updated successfully");
-  } catch (error) {
-    console.error("Error updating admin: ", error.message);
-    toast.error("Failed to update admin");
-  }
-};
-
-// User status management functions
-const suspendUser = async (id) => {
-  try {
-    await updateUserStatusMutation({
-      id,
-      status: "Blocked",
-    });
-    toast.success("User suspended successfully");
-    await refetch();
-  } catch (error) {
-    console.error("Error suspending user: ", error.message);
-    toast.error("Failed to suspend user");
-  }
-};
-
-const activateUser = async (id) => {
-  try {
-    await updateUserStatusMutation({
-      id,
-      status: "Active",
-    });
-    toast.success("User activated successfully");
-    await refetch();
-  } catch (error) {
-    console.error("Error activating user: ", error.message);
-    toast.error("Failed to activate user");
-  }
-};
-</script>
 
 <style scoped>
 .bg-green-500 {

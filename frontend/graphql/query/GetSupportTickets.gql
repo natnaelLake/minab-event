@@ -1,0 +1,9 @@
+query GetSupportTickets {
+    support_tickets {
+      id
+      title
+      created_at
+      status
+      description
+    }
+  }

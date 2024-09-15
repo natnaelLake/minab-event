@@ -1,3 +1,45 @@
+<script setup>
+import { ref, computed } from "vue";
+import { useAuthStore } from "@/store";
+import { useRouter } from "vue-router";
+import { getNavigationRoutes } from "@/routes";
+
+const authStore = useAuthStore();
+const router = useRouter();
+const user = authStore.user;
+const showModal = ref(false);
+const drawerOpen = ref(false);
+const isAuthenticated = computed(() => authStore.isAuthenticated);
+const isAdmin = computed(() => authStore.role === "user-admin"); // Check if the role is admin
+
+const openModal = () => {
+  showModal.value = true;
+};
+
+const cancelLogout = () => {
+  showModal.value = false;
+};
+
+const handleLogout = () => {
+  authStore.logout();
+  showModal.value = false;
+  drawerOpen.value = false;
+  router.push("/");
+};
+
+const toggleDrawer = () => {
+  drawerOpen.value = !drawerOpen.value;
+};
+
+const closeDrawer = () => {
+  drawerOpen.value = false;
+};
+
+const routes = computed(() => {
+  return getNavigationRoutes(authStore.role, isAuthenticated.value);
+});
+</script>
+
 <template>
   <nav
     class="fixed w-full top-0 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 shadow-md p-4 flex items-center justify-between text-white z-50"
@@ -116,50 +158,7 @@
   </nav>
 </template>
 
-<script setup>
-import { ref, computed } from "vue";
-import { useAuthStore } from "@/store";
-import { useRouter } from "vue-router";
-import { getNavigationRoutes } from "@/routes";
-
-const authStore = useAuthStore();
-const router = useRouter();
-const user = authStore.user;
-const showModal = ref(false);
-const drawerOpen = ref(false);
-const isAuthenticated = computed(() => authStore.isAuthenticated);
-const isAdmin = computed(() => authStore.role === "user-admin"); // Check if the role is admin
-
-const openModal = () => {
-  showModal.value = true;
-};
-
-const cancelLogout = () => {
-  showModal.value = false;
-};
-
-const handleLogout = () => {
-  authStore.logout();
-  showModal.value = false;
-  drawerOpen.value = false;
-  router.push("/");
-};
-
-const toggleDrawer = () => {
-  drawerOpen.value = !drawerOpen.value;
-};
-
-const closeDrawer = () => {
-  drawerOpen.value = false;
-};
-
-const routes = computed(() => {
-  return getNavigationRoutes(authStore.role, isAuthenticated.value);
-});
-</script>
-
 <style scoped>
-/* Drawer Slide Animation */
 .slide-right-enter-active,
 .slide-right-leave-active {
   transition: transform 0.3s ease;

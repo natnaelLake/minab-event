@@ -8,12 +8,9 @@ import (
 
 	"backend/controller"
 	"backend/middlewares"
-	"backend/utilService"
 )
 
 func main() {
-	client := utilService.Client()
-	fmt.Println("GraphQL client initialized:", client)
 
 	// Define HTTP server and routes
 	http.HandleFunc("/register", middlewares.ApplyMiddleware(controller.Signup, middlewares.Logger, middlewares.CorsMiddleware))

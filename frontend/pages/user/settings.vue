@@ -115,7 +115,7 @@ const redirectToEditProfile = () => {
           </div>
         </div>
 
-        <div class="mt-6 flex justify-around">
+        <div  v-if="user.role !== 'user-admin'" class="mt-6 flex justify-around">
           <button
             class="text-blue-500 font-semibold hover:underline"
             @click="redirectFollowing"

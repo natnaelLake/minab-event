@@ -1,0 +1,11 @@
+query GetMostPopularEvents {
+  events(order_by: { tickets_aggregate: { count: desc } }, limit: 5) {
+    id
+    title
+    total_tickets: tickets_aggregate {
+      aggregate {
+        count
+      }
+    }
+  }
+}

@@ -91,6 +91,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
         }
     `)
 	checkReq.Var("email", newUser.Email)
+	checkReq.Header.Set("x-hasura-admin-secret", "myadminsecretkey")
 
 	var checkResp struct {
 		Users []struct {
@@ -132,6 +133,7 @@ func Signup(w http.ResponseWriter, r *http.Request) {
 			"password":   hashedPassword,
 		},
 	})
+	req.Header.Set("x-hasura-admin-secret", "myadminsecretkey")
 
 	var respData struct {
 		InsertUsers struct {
@@ -187,7 +189,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
     `)
 
 	req.Var("email", newUser.Email)
-
+	req.Header.Set("x-hasura-admin-secret", "myadminsecretkey")
 	// Execute the GraphQL query
 	var respData struct {
 		Users []struct {

@@ -18,10 +18,10 @@ func (t *headersTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 	return t.base.RoundTrip(req)
 }
 
-func Client() *graphql.Client {	
+func Client() *graphql.Client {
 	headers := http.Header{}
-	headers.Add("x-hasura-admin-secret", "adminsecretkey") 
-	headers.Add("x-hasura-access-key", "adminaccesskey")  
+	headers.Add("x-hasura-admin-secret", "myadminsecretkey")
+	headers.Add("x-hasura-access-key", "myadminsecretkey")
 
 	httpClient := &http.Client{
 		Transport: &headersTransport{

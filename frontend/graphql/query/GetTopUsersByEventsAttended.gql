@@ -1,0 +1,12 @@
+query GetTopUsersByEventsAttended {
+  users(order_by: { tickets_aggregate: { count: desc } }, limit: 5) {
+    id
+    first_name
+    last_name
+    total_events_attended: tickets_aggregate {
+      aggregate {
+        count
+      }
+    }
+  }
+}

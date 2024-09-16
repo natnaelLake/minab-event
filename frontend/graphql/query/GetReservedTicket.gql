@@ -1,0 +1,35 @@
+query GetReservedEvent(
+  $user_id: uuid!
+  $limit: Int
+  $offset: Int
+  $order_by: [tickets_order_by!]
+) {
+  tickets(
+    where: { user_id: { _eq: $user_id } }
+    limit: $limit
+    offset: $offset
+    order_by: $order_by
+  ) {
+    event_id
+    id
+    purchased_at
+    quantity
+    total_price
+    event {
+      event_end_time
+      event_start_time
+      featured_image_url
+      id
+      price
+      quantity
+      title
+      total_ticket
+      user {
+        first_name
+        id
+        profile_image_url
+      }
+      venue
+    }
+  }
+}

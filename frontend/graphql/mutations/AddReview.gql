@@ -1,0 +1,8 @@
+mutation AddReview($event_id: uuid!, $rating: Int!, $comment: String!) {
+  insert_reviews_one(object: { event_id: $event_id,  rating: $rating, comment: $comment }) {
+    id
+    rating
+    comment
+    created_at
+  }
+}

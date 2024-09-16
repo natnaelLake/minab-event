@@ -1,0 +1,7 @@
+mutation CreateTag($name: String!, $description: String!, $tag_image: String!) {
+  insert_tags(
+    objects: { name: $name, description: $description, tag_image: $tag_image }
+  ) {
+    affected_rows
+  }
+}

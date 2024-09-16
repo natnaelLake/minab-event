@@ -1,0 +1,7 @@
+mutation CreateFeedback($title: String!, $description: String!) {
+  insert_feedbacks_one(object: { title: $title, description: $description }) {
+    id
+    title
+    description
+  }
+}

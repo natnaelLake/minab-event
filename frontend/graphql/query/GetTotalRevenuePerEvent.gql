@@ -1,0 +1,13 @@
+query GetTotalRevenuePerEvent {
+  events {
+    id
+    title
+    total_revenue: tickets_aggregate {
+      aggregate {
+        sum {
+          total_price
+        }
+      }
+    }
+  }
+}

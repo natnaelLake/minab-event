@@ -1,0 +1,9 @@
+mutation ProcessPayment($input: ProcessPaymentInput!) {
+  processPayment(input: $input) {
+    status
+    message
+    data {
+      checkout_url
+    }
+  }
+}

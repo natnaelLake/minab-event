@@ -1,0 +1,11 @@
+query GetLatestUserEvents($userId: uuid!) {
+  events(where: { user_id: { _eq: $userId } }, order_by: { created_at: desc }, limit: 5) {
+    id
+    title
+    description
+    event_start_time
+    event_end_time
+    price
+    featured_image_url
+  }
+}

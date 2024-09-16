@@ -1,0 +1,7 @@
+mutation UpdateTag($tag_id: uuid!, $changes: tags_set_input!) {
+  update_tags_by_pk(pk_columns: { id: $tag_id }, _set: $changes) {
+    created_at
+    id
+    name
+  }
+}

@@ -1,0 +1,9 @@
+query GetAllTags($limit: Int!, $offset: Int!, $order_by: [tags_order_by!]) {
+  tags(limit: $limit, offset: $offset, order_by: $order_by) {
+    created_at
+    id
+    name
+    description
+    tag_image
+  }
+}

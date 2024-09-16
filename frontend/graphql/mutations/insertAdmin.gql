@@ -1,0 +1,19 @@
+mutation CreateAdmin(
+  $email: String!
+  $first_name: String!
+  $last_name: String!
+  $role: String!
+  $password: String!
+) {
+  insert_users(
+    objects: {
+      last_name: $last_name
+      email: $email
+      role: $role
+      first_name: $first_name
+      password: $password
+    }
+  ) {
+    affected_rows
+  }
+}

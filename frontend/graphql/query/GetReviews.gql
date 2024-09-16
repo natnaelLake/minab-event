@@ -1,0 +1,12 @@
+query GetReviews($event_id: uuid!) {
+  reviews(where: { event_id: { _eq: $event_id } }) {
+    user {
+      first_name
+      last_name
+      profile_image_url
+    }
+    rating
+    comment
+    created_at
+  }
+}

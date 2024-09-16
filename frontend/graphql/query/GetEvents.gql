@@ -1,0 +1,40 @@
+query GetAllEvents(
+  $limit: Int!
+  $offset: Int!
+  $order_by: [events_order_by!]
+  $where: events_bool_exp
+) {
+  events(limit: $limit, offset: $offset, order_by: $order_by, where: $where) {
+    categories
+    created_at
+    description
+    event_start_time
+    event_end_time
+    featured_image_url
+    id
+    location
+    preparation_time
+    price
+    quantity
+    tags
+    title
+    updated_at
+    user_id
+    status
+    is_free
+    venue
+    user {
+      created_at
+      email
+      first_name
+      id
+      last_name
+      profile_image_url
+    }
+  }
+  events_aggregate(where: $where) {
+    aggregate {
+      count
+    }
+  }
+}

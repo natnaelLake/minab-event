@@ -59,15 +59,19 @@ const onSubmit = async (values) => {
 };
 
 onDone((result) => {
-  Cookies.set("auth_token", result.data.login.token, { expires: 7 });
-  authStore.setToken(result.data.login.token);
-  authStore.setId(result.data.login.id);
-  authStore.setUser(result.data.login.id);
-  authStore.setRole(result.data.login.role);
-  if (result.data.login.role === "user-admin") {
-    navigateTo("/user-admin/dashboard");
+  if (result.data.status !== "Suspended") {
+    Cookies.set("auth_token", result.data.login.token, { expires: 7 });
+    authStore.setToken(result.data.login.token);
+    authStore.setId(result.data.login.id);
+    authStore.setUser(result.data.login.id);
+    authStore.setRole(result.data.login.role);
+    if (result.data.login.role === "user-admin") {
+      navigateTo("/user-admin/dashboard");
+    } else {
+      navigateTo("/");
+    }
   } else {
-    navigateTo("/");
+    toast.error("Something went wrong");
   }
 });
 
@@ -81,7 +85,9 @@ onError((error) => {
 </script>
 
 <template>
-  <div class="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-100">
+  <div
+    class="flex h-screen items-center justify-center bg-gray-100 dark:bg-gray-100"
+  >
     <DynamicForm :schema="loginSchema" :submitHandler="onSubmit">
       <button
         type="submit"

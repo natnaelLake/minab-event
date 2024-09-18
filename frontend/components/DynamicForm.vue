@@ -75,7 +75,7 @@
             :class="['text-red-500 text-sm mt-1', fieldClass?.error]"
           />
         </div>
-        <div v-if="name === 'is_free'" class="flex-1 min-w-[200px]">
+        <!-- <div v-if="name === 'is_free'" class="flex-1 min-w-[200px]">
           <label
             :for="name"
             :class="[
@@ -99,7 +99,7 @@
             :name="name"
             :class="['text-red-500 text-sm mt-1', fieldClass?.error]"
           />
-        </div>
+        </div> -->
       </div>
 
       <!-- Handling for File Input and Other Types -->

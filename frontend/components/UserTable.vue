@@ -193,7 +193,7 @@ const suspendUser = async (id) => {
   try {
     await updateUserStatusMutation({
       id,
-      status: "Blocked",
+      status: "Suspended",
     });
     toast.success("User suspended successfully");
     await refetch();
@@ -266,7 +266,7 @@ const activateUser = async (id) => {
                       user.status === 'Active'
                         ? 'bg-green-500 text-white px-4 py-2 rounded'
                         : '',
-                      user.status === 'Blocked'
+                      user.status === 'Suspended'
                         ? 'bg-red-500 text-white px-4 py-2 rounded'
                         : '',
                       'px-2 py-1 rounded text-xs font-semibold',
@@ -283,7 +283,7 @@ const activateUser = async (id) => {
                     Suspend
                   </button>
                   <button
-                    v-if="user.status === 'Blocked'"
+                    v-if="user.status === 'Suspended'"
                     class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
                     @click="activateUser(user.id)"
                   >

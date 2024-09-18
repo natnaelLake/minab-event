@@ -1,3 +1,42 @@
+
+<script setup>
+import { ref, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useAuthStore } from "~/store";
+import verifyEmail from "~/graphql/mutations/VerifyEmailMutation.gql";
+import { toast } from "vue3-toastify";
+import Cookies from "js-cookie";
+
+const isVerifying = ref(true);
+const verificationSuccess = ref(false);
+const route = useRoute();
+const authStore = useAuthStore();
+
+const { mutate, onDone, loading, onError } = authentication(verifyEmail);
+onDone((result) => {
+  verificationSuccess.value = true;
+  toast.success("User signed up successfully!");
+  Cookies.set("auth_token", result.data.verifyEmail.token, { expires: 7 });
+
+  authStore.setToken(result.data.verifyEmail.token);
+  authStore.setId(result.data.verifyEmail.id);
+  authStore.setUser(result.data.verifyEmail.id);
+  authStore.setRole(result.data.verifyEmail.role);
+  verificationSuccess.value = false;
+  navigateTo("/");
+});
+
+onMounted(async () => {
+  const token = route.query.token;
+
+  if (!token) {
+    verificationSuccess.value = false;
+    isVerifying.value = false;
+    return;
+  }
+  mutate({ token });
+});
+</script>
 <template>
   <div
     class="min-h-screen bg-gray-50 flex flex-col justify-center items-center py-12 px-4 sm:px-6 lg:px-8"
@@ -85,46 +124,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref, onMounted } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { useAuthStore } from "~/store";
-import verifyEmail from "~/graphql/mutations/VerifyEmailMutation.gql";
-import { toast } from "vue3-toastify";
-import Cookies from "js-cookie";
-
-const isVerifying = ref(true);
-const verificationSuccess = ref(false);
-const route = useRoute();
-const authStore = useAuthStore();
-
-const { mutate, onDone, loading, onError } = authentication(verifyEmail);
-onDone((result) => {
-  verificationSuccess.value = true;
-  toast.success("User signed up successfully!");
-  console.log('_______============',result.data);
-  Cookies.set("auth_token", result.data.verifyEmail.token, { expires: 7 });
-
-  authStore.setToken(result.data.verifyEmail.token);
-  authStore.setId(result.data.verifyEmail.id);
-  authStore.setUser(result.data.verifyEmail.id);
-  authStore.setRole(result.data.verifyEmail.role);
-  verificationSuccess.value = false;
-  navigateTo("/");
-});
-
-onMounted(async () => {
-  const token = route.query.token;
-
-  if (!token) {
-    verificationSuccess.value = false;
-    isVerifying.value = false;
-    return;
-  }
-  mutate({ token });
-});
-</script>
 
 <style scoped>
 /* Add custom styles here */

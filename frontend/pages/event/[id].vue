@@ -484,7 +484,7 @@ onUnmounted(() => {
         <div class="flex items-center space-x-4">
           <span class="text-gray-700">Likes: {{ eventData.likes.length }}</span>
           <a href="#" class="text-blue-600"
-            >Reviews ({{ eventData.reviews.length }})</a
+            >Reviews ({{ calculateAverageRating }})</a
           >
         </div>
       </div>

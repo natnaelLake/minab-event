@@ -23,6 +23,7 @@ query GetMyEvents(
     quantity
     tags
     title
+    status
     total_ticket
     user_id
     venue

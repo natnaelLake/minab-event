@@ -198,7 +198,7 @@ const onSubmit = async (values) => {
         ? `${selectedLocation.value[0]},${selectedLocation.value[1]}`
         : values.location,
       venue: values.venue,
-      is_free: values.is_free,
+      is_free: values.is_free || false,
       price: parseFloat(values.price) || 0,
       quantity: parseInt(values.quantity) || 1,
       preparation_time: values.preparation_time,

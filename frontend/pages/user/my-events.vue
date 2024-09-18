@@ -67,7 +67,10 @@ const handleDeleteEvent = async (eventId) => {
   try {
     await updateEventStatus({ id: eventId, status: "Blocked" });
     closeDeleteModal();
-    events.value = events.filter((event) => event.status !== "Blocked");
+    console.log('===================',events)
+    events.value = events.value.filter((event) => event.status !== "Blocked");
+    toast.success("The Event Blocked Successfully.");
+
   } catch (error) {
     console.error("Error deleting event: ", error.message);
     toast.error("Failed to delete the event.");

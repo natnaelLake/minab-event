@@ -1,3 +1,65 @@
+
+<script setup>
+import { ref } from "vue";
+import { useForm, useField, Field, ErrorMessage, Form } from "vee-validate";
+import * as yup from "yup";
+import CREATE_SUPPORT_TICKET from "~/graphql/mutations/CreateSupportTicket.gql";
+import GET_SUPPORT_TICKETS from "~/graphql/query/GetSupportTickets.gql";
+import { toast } from "vue3-toastify";
+import { formatDistance } from "date-fns";
+
+// Define schema with yup
+const schema = yup.object({
+  title: yup.string().required("Title is required"),
+  description: yup.string().required("Description is required"),
+});
+
+const tickets = ref([]);
+// Define fields with vee-validate
+const { handleSubmit } = useForm({ validationSchema: schema });
+const { value: title } = useField("title");
+const { value: description } = useField("description");
+
+const { mutate: createTicket } = useMutationComposable(CREATE_SUPPORT_TICKET);
+const { onResult: ticketsResult, refetch } =
+  useQueryComposable(GET_SUPPORT_TICKETS);
+
+ticketsResult((result) => {
+  if (result.data) {
+    tickets.value = result.data.support_tickets;
+    console.log(';;;;;;;;;;;;',tickets)
+  }
+});
+
+const submitTicket = handleSubmit(async (values) => {
+  try {
+    await createTicket({
+      title: values.title,
+      description: values.description,
+    });
+    toast.success("Support ticket created successfully!", {
+      transition: toast.TRANSITIONS.FLIP,
+      position: toast.POSITION.TOP_RIGHT,
+    });
+    title.value = "";
+    description.value = "";
+    refetch();
+  } catch (error) {
+    console.error("Error creating ticket:", error);
+    toast.error("Error creating support ticket.", {
+      transition: toast.TRANSITIONS.FLIP,
+      position: toast.POSITION.TOP_RIGHT,
+    });
+  }
+});
+
+// Utility function to format date
+// const formatDate = (date) => {
+//   const options = { year: 'numeric', month: 'long', day: 'numeric' };
+//   return new Date(date).toLocaleDateString(undefined, options);
+// };
+</script>
+
 <template>
   <div class="p-6 max-w-6xl mx-auto bg-white shadow-md rounded-lg mt-20">
     <h1 class="text-2xl font-bold mb-6 text-gray-800">Support Tickets</h1>
@@ -86,66 +148,6 @@
   </div>
 </template>
 
-<script setup>
-import { ref } from "vue";
-import { useForm, useField, Field, ErrorMessage, Form } from "vee-validate";
-import * as yup from "yup";
-import CREATE_SUPPORT_TICKET from "~/graphql/mutations/CreateSupportTicket.gql";
-import GET_SUPPORT_TICKETS from "~/graphql/query/GetSupportTickets.gql";
-import { toast } from "vue3-toastify";
-import { formatDistance } from "date-fns";
-
-// Define schema with yup
-const schema = yup.object({
-  title: yup.string().required("Title is required"),
-  description: yup.string().required("Description is required"),
-});
-
-const tickets = ref([]);
-// Define fields with vee-validate
-const { handleSubmit } = useForm({ validationSchema: schema });
-const { value: title } = useField("title");
-const { value: description } = useField("description");
-
-const { mutate: createTicket } = useMutationComposable(CREATE_SUPPORT_TICKET);
-const { onResult: ticketsResult, refetch } =
-  useQueryComposable(GET_SUPPORT_TICKETS);
-
-ticketsResult((result) => {
-  if (result.data) {
-    tickets.value = result.data.support_tickets;
-    console.log(';;;;;;;;;;;;',tickets)
-  }
-});
-
-const submitTicket = handleSubmit(async (values) => {
-  try {
-    await createTicket({
-      title: values.title,
-      description: values.description,
-    });
-    toast.success("Support ticket created successfully!", {
-      transition: toast.TRANSITIONS.FLIP,
-      position: toast.POSITION.TOP_RIGHT,
-    });
-    title.value = "";
-    description.value = "";
-    refetch();
-  } catch (error) {
-    console.error("Error creating ticket:", error);
-    toast.error("Error creating support ticket.", {
-      transition: toast.TRANSITIONS.FLIP,
-      position: toast.POSITION.TOP_RIGHT,
-    });
-  }
-});
-
-// Utility function to format date
-// const formatDate = (date) => {
-//   const options = { year: 'numeric', month: 'long', day: 'numeric' };
-//   return new Date(date).toLocaleDateString(undefined, options);
-// };
-</script>
 
 <style scoped>
 /* Optional: Add additional styling for better visuals */

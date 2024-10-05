@@ -1,3 +1,59 @@
+
+<script setup>
+import { ref } from "vue";
+import { useForm, useField, Field, ErrorMessage, Form } from "vee-validate";
+import * as yup from "yup";
+import CREATE_FEEDBACK from "~/graphql/mutations/CreateFeedback.gql";
+import GET_USER_FEEDBACKS from "~/graphql/query/GetFeedbackList.gql";
+import useMutationComposable from "~/composables/useMutationComposable";
+import { toast } from "vue3-toastify";
+
+// Define schema with yup
+const schema = yup.object({
+  title: yup.string().required("Title is required"),
+  description: yup.string().required("Description is required"),
+});
+
+// Define fields with vee-validate
+const { handleSubmit } = useForm({ validationSchema: schema });
+const { value: title } = useField("title");
+const { value: description } = useField("description");
+const feedbacks = ref([]);
+
+const { mutate: createFeedback } = useMutationComposable(CREATE_FEEDBACK);
+const { onResult: updatedFeedbackResult, refetch } =
+  useQueryComposable(GET_USER_FEEDBACKS);
+updatedFeedbackResult((result) => {
+  if (result.data) {
+    feedbacks.value = result.data.feedbacks;
+    console.log('>>>>>>>>>>>>>>>>>',feedbacks)
+  }
+});
+
+const submitFeedback = handleSubmit(async (values) => {
+  try {
+    await createFeedback({
+      title: values.title,
+      description: values.description,
+    });
+    toast.success("Feedback submitted successfully!", {
+      transition: toast.TRANSITIONS.FLIP,
+      position: toast.POSITION.TOP_RIGHT,
+    });
+    title.value = "";
+    description.value = "";
+    // Refresh feedback list after submission
+    refetch();
+  } catch (error) {
+    console.error("Error submitting feedback:", error);
+    toast.success("Error submitting feedback.", {
+      transition: toast.TRANSITIONS.FLIP,
+      position: toast.POSITION.TOP_RIGHT,
+    });
+  }
+});
+</script>
+
 <template>
   <div class="p-6 max-w-6xl mx-auto bg-white shadow-md rounded-lg mt-20">
     <h1 class="text-2xl font-bold mb-6 text-gray-800">Feedback & Support</h1>
@@ -78,61 +134,6 @@
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref } from "vue";
-import { useForm, useField, Field, ErrorMessage, Form } from "vee-validate";
-import * as yup from "yup";
-import CREATE_FEEDBACK from "~/graphql/mutations/CreateFeedback.gql";
-import GET_USER_FEEDBACKS from "~/graphql/query/GetFeedbackList.gql";
-import useMutationComposable from "~/composables/useMutationComposable";
-import { toast } from "vue3-toastify";
-
-// Define schema with yup
-const schema = yup.object({
-  title: yup.string().required("Title is required"),
-  description: yup.string().required("Description is required"),
-});
-
-// Define fields with vee-validate
-const { handleSubmit } = useForm({ validationSchema: schema });
-const { value: title } = useField("title");
-const { value: description } = useField("description");
-const feedbacks = ref([]);
-
-const { mutate: createFeedback } = useMutationComposable(CREATE_FEEDBACK);
-const { onResult: updatedFeedbackResult, refetch } =
-  useQueryComposable(GET_USER_FEEDBACKS);
-updatedFeedbackResult((result) => {
-  if (result.data) {
-    feedbacks.value = result.data.feedbacks;
-    console.log('>>>>>>>>>>>>>>>>>',feedbacks)
-  }
-});
-
-const submitFeedback = handleSubmit(async (values) => {
-  try {
-    await createFeedback({
-      title: values.title,
-      description: values.description,
-    });
-    toast.success("Feedback submitted successfully!", {
-      transition: toast.TRANSITIONS.FLIP,
-      position: toast.POSITION.TOP_RIGHT,
-    });
-    title.value = "";
-    description.value = "";
-    // Refresh feedback list after submission
-    refetch();
-  } catch (error) {
-    console.error("Error submitting feedback:", error);
-    toast.success("Error submitting feedback.", {
-      transition: toast.TRANSITIONS.FLIP,
-      position: toast.POSITION.TOP_RIGHT,
-    });
-  }
-});
-</script>
 
 <style scoped>
 /* Optional: Add additional styling for better visuals */
